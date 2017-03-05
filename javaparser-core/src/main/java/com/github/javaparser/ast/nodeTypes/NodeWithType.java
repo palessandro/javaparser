@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
- * Copyright (C) 2011, 2013-2015 The JavaParser Team.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
  *
@@ -26,38 +26,51 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 
+import static com.github.javaparser.utils.Utils.assertNonEmpty;
+
 /**
- * A node having a type.
- *
+ * A node with a type.
+ * <p>
  * The main reason for this interface is to permit users to manipulate homogeneously all nodes with getType/setType
  * methods
  *
  * @since 2.3.1
  */
-public interface NodeWithType<T> {
+public interface NodeWithType<N extends Node, T extends Type> {
     /**
      * Gets the type
-     * 
+     *
      * @return the type
      */
-    Type getType();
+    T getType();
 
     /**
      * Sets the type
-     * 
+     *
      * @param type the type
      * @return this
      */
-    T setType(Type type);
+    N setType(T type);
+
+    void tryAddImportToParentCompilationUnit(Class<?> clazz);
 
     /**
      * Sets this type to this class and try to import it to the {@link CompilationUnit} if needed
-     * 
+     *
      * @param typeClass the type
      * @return this
      */
-    default T setType(Class<?> typeClass) {
-        ((Node) this).tryAddImportToParentCompilationUnit(typeClass);
-        return setType(new ClassOrInterfaceType(typeClass.getSimpleName()));
+    @SuppressWarnings("unchecked")
+    default N setType(Class<?> typeClass) {
+        tryAddImportToParentCompilationUnit(typeClass);
+        return setType((T) new ClassOrInterfaceType(typeClass.getSimpleName()));
     }
+
+    @SuppressWarnings("unchecked")
+    default N setType(final String type) {
+        assertNonEmpty(type);
+        ClassOrInterfaceType classOrInterfaceType = new ClassOrInterfaceType(type);
+        return setType((T) classOrInterfaceType);
+    }
+
 }

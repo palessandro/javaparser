@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,19 +18,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
+
 package com.github.javaparser.bdd.steps;
 
-import com.github.javaparser.bdd.visitors.PositionTestVisitor;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.body.Parameter;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.ast.visitor.GenericListVisitorAdapter;
 import com.github.javaparser.ast.visitor.GenericVisitorAdapter;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import com.github.javaparser.bdd.visitors.PositionTestVisitor;
 import org.jbehave.core.annotations.Given;
 import org.jbehave.core.annotations.Then;
 import org.jbehave.core.annotations.When;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -44,13 +48,15 @@ public class VisitorSteps {
     private VoidVisitorAdapter<AtomicReference<String>> collectVariableNameVisitor;
     private PositionTestVisitor positionTestVisitor;
     private GenericVisitorAdapter<String, Void> nameReturningVisitor;
+    private GenericListVisitorAdapter<String, Void> allNameReturningVisitor;
     private AtomicReference<String> collectedVariableName;
     private String returnedVariableName;
+    private List<String> returnedVariableNames;
 
     /* Map that maintains shares state across step classes.  If manipulating the objects in the map you must update the state */
     private Map<String, Object> state;
 
-    public VisitorSteps(Map<String, Object> state){
+    public VisitorSteps(Map<String, Object> state) {
         this.state = state;
     }
 
@@ -58,8 +64,8 @@ public class VisitorSteps {
     public void givenAVoidVisitorAdapterWithAVisitMethodThatChangesVariableNamesToUppercase() {
         toUpperCaseVariableNameVisitor = new VoidVisitorAdapter<AtomicReference<String>>() {
             @Override
-            public void visit(VariableDeclaratorId n, AtomicReference<String> arg) {
-                n.setName(n.getName().toUpperCase());
+            public void visit(VariableDeclarator n, AtomicReference<String> arg) {
+                n.setName(n.getNameAsString().toUpperCase());
             }
         };
     }
@@ -68,7 +74,12 @@ public class VisitorSteps {
     public void givenAVoidVisitorAdapterWithAVisitMethodThatCollectsTheVariableName() {
         collectVariableNameVisitor = new VoidVisitorAdapter<AtomicReference<String>>() {
             @Override
-            public void visit(VariableDeclaratorId n, AtomicReference<String> arg) {
+            public void visit(VariableDeclarator n, AtomicReference<String> arg) {
+                arg.set(arg.get() + n.getName() + ";");
+            }
+
+            @Override
+            public void visit(Parameter n, AtomicReference<String> arg) {
                 arg.set(arg.get() + n.getName() + ";");
             }
         };
@@ -78,8 +89,18 @@ public class VisitorSteps {
     public void givenAGenericVisitorAdapterWithAVisitMethodThatReturnsVariableNames() {
         nameReturningVisitor = new GenericVisitorAdapter<String, Void>() {
             @Override
-            public String visit(VariableDeclaratorId n, Void arg) {
-                return n.getName();
+            public String visit(VariableDeclarator n, Void arg) {
+                return n.getNameAsString();
+            }
+        };
+    }
+
+    @Given("a GenericListVisitorAdapter with a visit method that returns all variable names")
+    public void givenAGenericListVisitorAdapterWithAVisitMethodThatReturnsAllVariableNames() {
+        allNameReturningVisitor = new GenericListVisitorAdapter<String, Void>() {
+            @Override
+            public List<String> visit(VariableDeclarator n, Void arg) {
+                return Collections.singletonList(n.getNameAsString());
             }
         };
     }
@@ -92,7 +113,7 @@ public class VisitorSteps {
     @When("the CompilationUnit is cloned to the second CompilationUnit")
     public void whenTheSecondCompilationUnitIsCloned() {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
-        CompilationUnit compilationUnit2 = (CompilationUnit)compilationUnit.accept(new CloneVisitor(), null);
+        CompilationUnit compilationUnit2 = (CompilationUnit) compilationUnit.accept(new CloneVisitor(), null);
         state.put("cu2", compilationUnit2);
     }
 
@@ -116,6 +137,12 @@ public class VisitorSteps {
         returnedVariableName = nameReturningVisitor.visit(compilationUnit, null);
     }
 
+    @When("the CompilationUnit is visited by the visitor that returns all variable names")
+    public void whenTheCompilationUnitIsVisitedByTheVisitorThatReturnsAllVariableNames() {
+        CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
+        returnedVariableNames = allNameReturningVisitor.visit(compilationUnit, null);
+    }
+
     @When("the CompilationUnit is visited by the PositionTestVisitor")
     public void whenTheCompilationUnitIsVisitedByThePositionTestVisitor() {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
@@ -130,6 +157,11 @@ public class VisitorSteps {
     @Then("the return variable name is \"$nameUnderTest\"")
     public void thenTheReturnVariableNameIs(String nameUnderTest) {
         assertThat(returnedVariableName, is(nameUnderTest));
+    }
+
+    @Then("the first return variable name is \"$nameUnderTest\"")
+    public void thenTheFirstReturnVariableNameIs(String nameUnderTest) {
+        assertThat(returnedVariableNames.get(0), is(nameUnderTest));
     }
 
     @Then("the total number of nodes visited is $expectedCount")

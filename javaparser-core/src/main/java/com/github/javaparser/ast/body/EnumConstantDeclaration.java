@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,55 +18,58 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.body;
 
-import static com.github.javaparser.utils.Utils.ensureNotNull;
-
-import java.util.List;
-
 import com.github.javaparser.Range;
-import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.NameExpr;
-import com.github.javaparser.ast.nodeTypes.NodeWithJavaDoc;
-import com.github.javaparser.ast.nodeTypes.NodeWithName;
+import com.github.javaparser.ast.expr.SimpleName;
+import com.github.javaparser.ast.nodeTypes.NodeWithArguments;
+import com.github.javaparser.ast.nodeTypes.NodeWithJavadoc;
+import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import java.util.Arrays;
+import java.util.List;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.EnumConstantDeclarationMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * One of the values an enum can take. A(1) and B(2) in this example: <code>enum X { A(1), B(2) }</code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class EnumConstantDeclaration extends BodyDeclaration<EnumConstantDeclaration>
-        implements NodeWithJavaDoc<EnumConstantDeclaration>, NodeWithName<EnumConstantDeclaration> {
+public final class EnumConstantDeclaration extends BodyDeclaration<EnumConstantDeclaration> implements NodeWithJavadoc<EnumConstantDeclaration>, NodeWithSimpleName<EnumConstantDeclaration>, NodeWithArguments<EnumConstantDeclaration> {
 
-    private String name;
+    private SimpleName name;
 
-    private List<Expression> args;
+    private NodeList<Expression> arguments;
 
-    private List<BodyDeclaration<?>> classBody;
+    private NodeList<BodyDeclaration<?>> classBody;
 
     public EnumConstantDeclaration() {
+        this(null, new NodeList<>(), new SimpleName(), new NodeList<>(), new NodeList<>());
     }
 
     public EnumConstantDeclaration(String name) {
-        setName(name);
+        this(null, new NodeList<>(), new SimpleName(name), new NodeList<>(), new NodeList<>());
     }
 
-    public EnumConstantDeclaration(List<AnnotationExpr> annotations, String name, List<Expression> args,
-                                   List<BodyDeclaration<?>> classBody) {
-        super(annotations);
-        setName(name);
-        setArgs(args);
-        setClassBody(classBody);
+    @AllFieldsConstructor
+    public EnumConstantDeclaration(NodeList<AnnotationExpr> annotations, SimpleName name, NodeList<Expression> arguments, NodeList<BodyDeclaration<?>> classBody) {
+        this(null, annotations, name, arguments, classBody);
     }
 
-    public EnumConstantDeclaration(Range range, List<AnnotationExpr> annotations, String name, List<Expression> args,
-                                   List<BodyDeclaration<?>> classBody) {
+    public EnumConstantDeclaration(Range range, NodeList<AnnotationExpr> annotations, SimpleName name, NodeList<Expression> arguments, NodeList<BodyDeclaration<?>> classBody) {
         super(range, annotations);
         setName(name);
-        setArgs(args);
+        setArguments(arguments);
         setClassBody(classBody);
     }
 
@@ -80,47 +83,82 @@ public final class EnumConstantDeclaration extends BodyDeclaration<EnumConstantD
         v.visit(this, arg);
     }
 
-    public List<Expression> getArgs() {
-        args = ensureNotNull(args);
-        return args;
+    public NodeList<Expression> getArguments() {
+        return arguments;
     }
 
-    public List<BodyDeclaration<?>> getClassBody() {
-        classBody = ensureNotNull(classBody);
+    public NodeList<BodyDeclaration<?>> getClassBody() {
         return classBody;
     }
 
     @Override
-    public String getName() {
+    public SimpleName getName() {
         return name;
     }
 
-    public void setArgs(List<Expression> args) {
-        this.args = args;
-		setAsParentNodeOf(this.args);
+    public EnumConstantDeclaration setArguments(final NodeList<Expression> arguments) {
+        assertNotNull(arguments);
+        notifyPropertyChange(ObservableProperty.ARGUMENTS, this.arguments, arguments);
+        if (this.arguments != null)
+            this.arguments.setParentNode(null);
+        this.arguments = arguments;
+        setAsParentNodeOf(arguments);
+        return this;
     }
 
-    public void setClassBody(List<BodyDeclaration<?>> classBody) {
+    public EnumConstantDeclaration setClassBody(final NodeList<BodyDeclaration<?>> classBody) {
+        assertNotNull(classBody);
+        notifyPropertyChange(ObservableProperty.CLASS_BODY, this.classBody, classBody);
+        if (this.classBody != null)
+            this.classBody.setParentNode(null);
         this.classBody = classBody;
-		setAsParentNodeOf(this.classBody);
+        setAsParentNodeOf(classBody);
+        return this;
     }
 
     @Override
-    public EnumConstantDeclaration setName(String name) {
+    public EnumConstantDeclaration setName(final SimpleName name) {
+        assertNotNull(name);
+        notifyPropertyChange(ObservableProperty.NAME, this.name, name);
+        if (this.name != null)
+            this.name.setParentNode(null);
         this.name = name;
+        setAsParentNodeOf(name);
         return this;
     }
 
     @Override
-    public JavadocComment getJavaDoc() {
-        if(getComment() instanceof JavadocComment){
-            return (JavadocComment) getComment();
-        }
-        return null;
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getArguments(), getClassBody(), getAnnotations());
     }
 
-    public EnumConstantDeclaration addArgument(String valueExpr) {
-        getArgs().add(NameExpr.create(valueExpr));
-        return this;
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < arguments.size(); i++) {
+            if (arguments.get(i) == node) {
+                arguments.remove(i);
+                return true;
+            }
+        }
+        for (int i = 0; i < classBody.size(); i++) {
+            if (classBody.get(i) == node) {
+                classBody.remove(i);
+                return true;
+            }
+        }
+        return super.remove(node);
+    }
+
+    @Override
+    public EnumConstantDeclaration clone() {
+        return (EnumConstantDeclaration) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public EnumConstantDeclarationMetaModel getMetaModel() {
+        return JavaParserMetaModel.enumConstantDeclarationMetaModel;
     }
 }
+

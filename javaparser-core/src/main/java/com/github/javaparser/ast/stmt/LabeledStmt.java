@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,58 +18,103 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.stmt;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.expr.SimpleName;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.LabeledStmtMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A statement that is labeled, like <code>label123: println("continuing");</code>
+ *
  * @author Julio Vilmar Gesser
  */
 public final class LabeledStmt extends Statement {
 
-	private String label;
+    private SimpleName label;
 
-	private Statement stmt;
+    private Statement statement;
 
-	public LabeledStmt() {
-	}
+    public LabeledStmt() {
+        this(null, new SimpleName(), new ReturnStmt());
+    }
 
-	public LabeledStmt(final String label, final Statement stmt) {
-		setLabel(label);
-		setStmt(stmt);
-	}
+    public LabeledStmt(final String label, final Statement statement) {
+        this(null, new SimpleName(label), statement);
+    }
 
-	public LabeledStmt(Range range, final String label, final Statement stmt) {
-		super(range);
-		setLabel(label);
-		setStmt(stmt);
-	}
+    @AllFieldsConstructor
+    public LabeledStmt(final SimpleName label, final Statement statement) {
+        this(null, label, statement);
+    }
 
-	@Override public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
-		return v.visit(this, arg);
-	}
+    public LabeledStmt(Range range, final SimpleName label, final Statement statement) {
+        super(range);
+        setLabel(label);
+        setStatement(statement);
+    }
 
-	@Override public <A> void accept(final VoidVisitor<A> v, final A arg) {
-		v.visit(this, arg);
-	}
+    @Override
+    public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
+        return v.visit(this, arg);
+    }
 
-	public String getLabel() {
-		return label;
-	}
+    @Override
+    public <A> void accept(final VoidVisitor<A> v, final A arg) {
+        v.visit(this, arg);
+    }
 
-	public Statement getStmt() {
-		return stmt;
-	}
+    public Statement getStatement() {
+        return statement;
+    }
 
-	public void setLabel(final String label) {
-		this.label = label;
-	}
+    public LabeledStmt setStatement(final Statement statement) {
+        assertNotNull(statement);
+        notifyPropertyChange(ObservableProperty.STATEMENT, this.statement, statement);
+        if (this.statement != null)
+            this.statement.setParentNode(null);
+        this.statement = statement;
+        setAsParentNodeOf(statement);
+        return this;
+    }
 
-	public void setStmt(final Statement stmt) {
-		this.stmt = stmt;
-		setAsParentNodeOf(this.stmt);
-	}
+    public final SimpleName getLabel() {
+        return label;
+    }
+
+    public LabeledStmt setLabel(final SimpleName label) {
+        assertNotNull(label);
+        notifyPropertyChange(ObservableProperty.LABEL, this.label, label);
+        if (this.label != null)
+            this.label.setParentNode(null);
+        this.label = label;
+        setAsParentNodeOf(label);
+        return this;
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public LabeledStmt clone() {
+        return (LabeledStmt) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public LabeledStmtMetaModel getMetaModel() {
+        return JavaParserMetaModel.labeledStmtMetaModel;
+    }
 }
+

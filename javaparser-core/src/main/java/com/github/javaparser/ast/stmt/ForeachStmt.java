@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,97 +18,126 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.stmt;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.VariableDeclarationExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.ForeachStmtMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A for-each statement.
+ * <br/><code>for(Object o: objects) { ... }</code>
+ *
  * @author Julio Vilmar Gesser
  */
 public final class ForeachStmt extends Statement implements NodeWithBody<ForeachStmt> {
 
-	private VariableDeclarationExpr var;
+    private VariableDeclarationExpr variable;
 
-	private Expression iterable;
+    private Expression iterable;
 
-	private Statement body;
+    private Statement body;
 
-	public ForeachStmt() {
-	}
+    public ForeachStmt() {
+        this(null, new VariableDeclarationExpr(), new NameExpr(), new ReturnStmt());
+    }
 
-	public ForeachStmt(final VariableDeclarationExpr var,
-			final Expression iterable, final Statement body) {
-		setVariable(var);
-		setIterable(iterable);
-		setBody(body);
-	}
+    @AllFieldsConstructor
+    public ForeachStmt(final VariableDeclarationExpr variable, final Expression iterable, final Statement body) {
+        this(null, variable, iterable, body);
+    }
 
-	public ForeachStmt(Range range,
-	                   final VariableDeclarationExpr var, final Expression iterable,
-	                   final Statement body) {
-		super(range);
-		setVariable(var);
-		setIterable(iterable);
-		setBody(body);
-	}
-
-    /**
-     * Will create a {@link NameExpr} with the iterable param
-     * 
-     * @param var
-     * @param iterable
-     * @param body
-     */
-    public ForeachStmt(VariableDeclarationExpr var, String iterable, BlockStmt body) {
-        setVariable(var);
-        setIterable(new NameExpr(iterable));
+    public ForeachStmt(Range range, final VariableDeclarationExpr variable, final Expression iterable, final Statement body) {
+        super(range);
+        setVariable(variable);
+        setIterable(iterable);
         setBody(body);
     }
 
+    public ForeachStmt(VariableDeclarationExpr variable, String iterable, BlockStmt body) {
+        this(null, variable, new NameExpr(iterable), body);
+    }
+
     @Override
-	public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
-		return v.visit(this, arg);
-	}
+    public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
+        return v.visit(this, arg);
+    }
 
-	@Override
-	public <A> void accept(final VoidVisitor<A> v, final A arg) {
-		v.visit(this, arg);
-	}
+    @Override
+    public <A> void accept(final VoidVisitor<A> v, final A arg) {
+        v.visit(this, arg);
+    }
 
-	@Override
+    @Override
     public Statement getBody() {
-		return body;
-	}
+        return body;
+    }
 
-	public Expression getIterable() {
-		return iterable;
-	}
+    public Expression getIterable() {
+        return iterable;
+    }
 
-	public VariableDeclarationExpr getVariable() {
-		return var;
-	}
+    public VariableDeclarationExpr getVariable() {
+        return variable;
+    }
 
-	@Override
+    @Override
     public ForeachStmt setBody(final Statement body) {
-		this.body = body;
-		setAsParentNodeOf(this.body);
+        assertNotNull(body);
+        notifyPropertyChange(ObservableProperty.BODY, this.body, body);
+        if (this.body != null)
+            this.body.setParentNode(null);
+        this.body = body;
+        setAsParentNodeOf(body);
         return this;
-	}
+    }
 
-	public void setIterable(final Expression iterable) {
-		this.iterable = iterable;
-		setAsParentNodeOf(this.iterable);
-	}
+    public ForeachStmt setIterable(final Expression iterable) {
+        assertNotNull(iterable);
+        notifyPropertyChange(ObservableProperty.ITERABLE, this.iterable, iterable);
+        if (this.iterable != null)
+            this.iterable.setParentNode(null);
+        this.iterable = iterable;
+        setAsParentNodeOf(iterable);
+        return this;
+    }
 
-	public void setVariable(final VariableDeclarationExpr var) {
-		this.var = var;
-		setAsParentNodeOf(this.var);
-	}
+    public ForeachStmt setVariable(final VariableDeclarationExpr variable) {
+        assertNotNull(variable);
+        notifyPropertyChange(ObservableProperty.VARIABLE, this.variable, variable);
+        if (this.variable != null)
+            this.variable.setParentNode(null);
+        this.variable = variable;
+        setAsParentNodeOf(variable);
+        return this;
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public ForeachStmt clone() {
+        return (ForeachStmt) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public ForeachStmtMetaModel getMetaModel() {
+        return JavaParserMetaModel.foreachStmtMetaModel;
+    }
 }
+

@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,98 +18,85 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
-
 package com.github.javaparser.ast.expr;
 
-import static com.github.javaparser.utils.Utils.ensureNotNull;
-
+import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
+import com.github.javaparser.ast.nodeTypes.NodeWithVariables;
+import com.github.javaparser.ast.observer.ObservableProperty;
+import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.ast.visitor.GenericVisitor;
+import com.github.javaparser.ast.visitor.VoidVisitor;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import com.github.javaparser.Range;
-import com.github.javaparser.ast.Modifier;
-import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
-import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
-import com.github.javaparser.ast.nodeTypes.NodeWithType;
-import com.github.javaparser.ast.type.Type;
-import com.github.javaparser.ast.visitor.GenericVisitor;
-import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.ast.NodeList.nodeList;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.VariableDeclarationExprMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A declaration of variables.
+ * It is an expression, so it can be put in places like the initializer of a for loop,
+ * or the resources part of the try statement.
+ * <br/><code>final int x=3, y=55</code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class VariableDeclarationExpr extends Expression
-        implements NodeWithType<VariableDeclarationExpr>, NodeWithModifiers<VariableDeclarationExpr>,
-        NodeWithAnnotations<VariableDeclarationExpr> {
+public final class VariableDeclarationExpr extends Expression implements NodeWithModifiers<VariableDeclarationExpr>, NodeWithAnnotations<VariableDeclarationExpr>, NodeWithVariables<VariableDeclarationExpr> {
 
-    private EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
+    private EnumSet<Modifier> modifiers;
 
-    private List<AnnotationExpr> annotations;
+    private NodeList<AnnotationExpr> annotations;
 
-    private Type type;
-
-    private List<VariableDeclarator> vars;
+    private NodeList<VariableDeclarator> variables;
 
     public VariableDeclarationExpr() {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), new NodeList<>());
     }
 
     public VariableDeclarationExpr(final Type type, String variableName) {
-        setType(type);
-        setVars(Arrays.asList(new VariableDeclarator(variableName)));
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), nodeList(new VariableDeclarator(type, variableName)));
     }
 
-    public VariableDeclarationExpr(final Type type, VariableDeclarator var) {
-        setType(type);
-        setVars(Arrays.asList(var));
+    public VariableDeclarationExpr(VariableDeclarator var) {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), nodeList(var));
     }
 
     public VariableDeclarationExpr(final Type type, String variableName, Modifier... modifiers) {
-        setType(type);
-        setVars(Arrays.asList(new VariableDeclarator(variableName)));
-        setModifiers(Arrays.stream(modifiers)
-                .collect(Collectors.toCollection(() -> EnumSet.noneOf(Modifier.class))));
+        this(null, Arrays.stream(modifiers).collect(Collectors.toCollection(() -> EnumSet.noneOf(Modifier.class))), new NodeList<>(), nodeList(new VariableDeclarator(type, variableName)));
     }
 
-    public VariableDeclarationExpr(final Type type, VariableDeclarator var, Modifier... modifiers) {
-        setType(type);
-        setVars(Arrays.asList(var));
-        setModifiers(Arrays.stream(modifiers)
-                .collect(Collectors.toCollection(() -> EnumSet.noneOf(Modifier.class))));
+    public VariableDeclarationExpr(VariableDeclarator var, Modifier... modifiers) {
+        this(null, Arrays.stream(modifiers).collect(Collectors.toCollection(() -> EnumSet.noneOf(Modifier.class))), new NodeList<>(), nodeList(var));
     }
 
-    public VariableDeclarationExpr(final Type type, final List<VariableDeclarator> vars) {
-        setType(type);
-        setVars(vars);
+    public VariableDeclarationExpr(final NodeList<VariableDeclarator> variables) {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), variables);
     }
 
-    public VariableDeclarationExpr(final EnumSet<Modifier> modifiers, final Type type,
-                                   final List<VariableDeclarator> vars) {
-        setModifiers(modifiers);
-        setType(type);
-        setVars(vars);
+    public VariableDeclarationExpr(final EnumSet<Modifier> modifiers, final NodeList<VariableDeclarator> variables) {
+        this(null, modifiers, new NodeList<>(), variables);
     }
 
-    public VariableDeclarationExpr(final Range range,
-                                   final EnumSet<Modifier> modifiers, final List<AnnotationExpr> annotations,
-                                   final Type type,
-                                   final List<VariableDeclarator> vars) {
+    @AllFieldsConstructor
+    public VariableDeclarationExpr(final EnumSet<Modifier> modifiers, final NodeList<AnnotationExpr> annotations, final NodeList<VariableDeclarator> variables) {
+        this(null, modifiers, annotations, variables);
+    }
+
+    public VariableDeclarationExpr(final Range range, final EnumSet<Modifier> modifiers, final NodeList<AnnotationExpr> annotations, final NodeList<VariableDeclarator> variables) {
         super(range);
         setModifiers(modifiers);
         setAnnotations(annotations);
-        setType(type);
-        setVars(vars);
-    }
-
-    /**
-     * Creates a {@link VariableDeclarationExpr}.
-     *
-     * @return instance of {@link VariableDeclarationExpr}
-     */
-    public static VariableDeclarationExpr create(Type type, String name) {
-        return new VariableDeclarationExpr(type, name);
+        setVariables(variables);
     }
 
     @Override
@@ -123,16 +110,15 @@ public final class VariableDeclarationExpr extends Expression
     }
 
     @Override
-    public List<AnnotationExpr> getAnnotations() {
-        annotations = ensureNotNull(annotations);
+    public NodeList<AnnotationExpr> getAnnotations() {
         return annotations;
     }
 
     /**
      * Return the modifiers of this variable declaration.
-     * 
-     * @see Modifier
+     *
      * @return modifiers
+     * @see Modifier
      */
     @Override
     public EnumSet<Modifier> getModifiers() {
@@ -140,37 +126,72 @@ public final class VariableDeclarationExpr extends Expression
     }
 
     @Override
-    public Type getType() {
-        return type;
-    }
-
-    public List<VariableDeclarator> getVars() {
-        vars = ensureNotNull(vars);
-        return vars;
+    public NodeList<VariableDeclarator> getVariables() {
+        return variables;
     }
 
     @Override
-    public VariableDeclarationExpr setAnnotations(final List<AnnotationExpr> annotations) {
+    public VariableDeclarationExpr setAnnotations(final NodeList<AnnotationExpr> annotations) {
+        assertNotNull(annotations);
+        notifyPropertyChange(ObservableProperty.ANNOTATIONS, this.annotations, annotations);
+        if (this.annotations != null)
+            this.annotations.setParentNode(null);
         this.annotations = annotations;
-        setAsParentNodeOf(this.annotations);
+        setAsParentNodeOf(annotations);
         return this;
     }
 
     @Override
     public VariableDeclarationExpr setModifiers(final EnumSet<Modifier> modifiers) {
+        assertNotNull(modifiers);
+        notifyPropertyChange(ObservableProperty.MODIFIERS, this.modifiers, modifiers);
         this.modifiers = modifiers;
         return this;
     }
 
     @Override
-    public VariableDeclarationExpr setType(final Type type) {
-        this.type = type;
-        setAsParentNodeOf(this.type);
+    public VariableDeclarationExpr setVariables(final NodeList<VariableDeclarator> variables) {
+        assertNotNull(variables);
+        notifyPropertyChange(ObservableProperty.VARIABLES, this.variables, variables);
+        if (this.variables != null)
+            this.variables.setParentNode(null);
+        this.variables = variables;
+        setAsParentNodeOf(variables);
         return this;
     }
 
-    public void setVars(final List<VariableDeclarator> vars) {
-        this.vars = vars;
-        setAsParentNodeOf(this.vars);
+    @Override
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getAnnotations(), getVariables());
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < annotations.size(); i++) {
+            if (annotations.get(i) == node) {
+                annotations.remove(i);
+                return true;
+            }
+        }
+        for (int i = 0; i < variables.size(); i++) {
+            if (variables.get(i) == node) {
+                variables.remove(i);
+                return true;
+            }
+        }
+        return super.remove(node);
+    }
+
+    @Override
+    public VariableDeclarationExpr clone() {
+        return (VariableDeclarationExpr) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public VariableDeclarationExprMetaModel getMetaModel() {
+        return JavaParserMetaModel.variableDeclarationExprMetaModel;
     }
 }
+

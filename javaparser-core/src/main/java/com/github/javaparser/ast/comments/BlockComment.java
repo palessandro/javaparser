@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,12 +18,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.comments;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.BlockCommentMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
  * <p>
@@ -31,16 +35,18 @@ import com.github.javaparser.ast.visitor.VoidVisitor;
  * </p>
  * Block comments can has multi lines and are delimited by "/&#42;" and
  * "&#42;/".
- * 
+ *
  * @author Julio Vilmar Gesser
  */
 public final class BlockComment extends Comment {
 
     public BlockComment() {
+        this(null, "empty");
     }
 
+    @AllFieldsConstructor
     public BlockComment(String content) {
-        super(content);
+        this(null, content);
     }
 
     public BlockComment(Range range, String content) {
@@ -56,4 +62,22 @@ public final class BlockComment extends Comment {
     public <A> void accept(VoidVisitor<A> v, A arg) {
         v.visit(this, arg);
     }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public BlockComment clone() {
+        return (BlockComment) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public BlockCommentMetaModel getMetaModel() {
+        return JavaParserMetaModel.blockCommentMetaModel;
+    }
 }
+

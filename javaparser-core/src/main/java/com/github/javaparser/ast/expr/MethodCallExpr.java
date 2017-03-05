@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,124 +18,189 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.expr;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.nodeTypes.NodeWithArguments;
+import com.github.javaparser.ast.nodeTypes.NodeWithOptionalScope;
+import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
+import com.github.javaparser.ast.nodeTypes.NodeWithTypeArguments;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
-
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-
-import static com.github.javaparser.utils.Utils.*;
+import java.util.Optional;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.MethodCallExprMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A method call on an object. <br/><code>circle.circumference()</code> <br/>In <code>a.&lt;String&gt;bb(15);</code> a
+ * is the scope, String is a type argument, bb is the name and 15 is an argument.
+ *
  * @author Julio Vilmar Gesser
  */
-public final class MethodCallExpr extends Expression {
+public final class MethodCallExpr extends Expression implements NodeWithTypeArguments<MethodCallExpr>, NodeWithArguments<MethodCallExpr>, NodeWithSimpleName<MethodCallExpr>, NodeWithOptionalScope<MethodCallExpr> {
 
-	private Expression scope;
+    private Expression scope;
 
-	private List<Type> typeArgs;
+    private NodeList<Type> typeArguments;
 
-	private NameExpr name;
+    private SimpleName name;
 
-	private List<Expression> args;
+    private NodeList<Expression> arguments;
 
-	public MethodCallExpr() {
-	}
+    public MethodCallExpr() {
+        this(null, null, new NodeList<>(), new SimpleName(), new NodeList<>());
+    }
 
-	public MethodCallExpr(final Expression scope, final String name) {
-		setScope(scope);
-		setName(name);
-	}
+    public MethodCallExpr(final Expression scope, final String name) {
+        this(null, scope, new NodeList<>(), new SimpleName(name), new NodeList<>());
+    }
 
-	public MethodCallExpr(final Expression scope, final String name, final List<Expression> args) {
-		setScope(scope);
-		setName(name);
-		setArgs(args);
-	}
+    public MethodCallExpr(final Expression scope, final SimpleName name, final NodeList<Expression> arguments) {
+        this(null, scope, new NodeList<>(), name, arguments);
+    }
 
-	public MethodCallExpr(final Range range, final Expression scope, final List<Type> typeArgs, final String name, final List<Expression> args) {
-		super(range);
-		setScope(scope);
-		setTypeArgs(typeArgs);
-		setName(name);
-		setArgs(args);
-	}
+    @AllFieldsConstructor
+    public MethodCallExpr(final Expression scope, final NodeList<Type> typeArguments, final SimpleName name, final NodeList<Expression> arguments) {
+        this(null, scope, typeArguments, name, arguments);
+    }
 
+    public MethodCallExpr(final Range range, final Expression scope, final NodeList<Type> typeArguments, final SimpleName name, final NodeList<Expression> arguments) {
+        super(range);
+        setScope(scope);
+        setTypeArguments(typeArguments);
+        setName(name);
+        setArguments(arguments);
+    }
 
-	/**
-	 * Adds the given argument to the method call. The list of arguments will be
-	 * initialized if it is <code>null</code>.
-	 *
-	 * @param arg
-	 *            argument value
-	 */
-	public MethodCallExpr addArgument(Expression arg) {
-		List<Expression> args = getArgs();
-		if (isNullOrEmpty(args)) {
-			args = new ArrayList<>();
-			setArgs(args);
-		}
-		args.add(arg);
-		arg.setParentNode(this);
-		return this;
-	}
+    @Override
+    public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
+        return v.visit(this, arg);
+    }
 
-	@Override public <R, A> R accept(final GenericVisitor<R, A> v, final A arg) {
-		return v.visit(this, arg);
-	}
+    @Override
+    public <A> void accept(final VoidVisitor<A> v, final A arg) {
+        v.visit(this, arg);
+    }
 
-	@Override public <A> void accept(final VoidVisitor<A> v, final A arg) {
-		v.visit(this, arg);
-	}
+    public NodeList<Expression> getArguments() {
+        return arguments;
+    }
 
-	public List<Expression> getArgs() {
-        args = ensureNotNull(args);
-        return args;
-	}
+    @Override
+    public SimpleName getName() {
+        return name;
+    }
 
-	public String getName() {
-		return name.getName();
-	}
+    @Override
+    public Optional<Expression> getScope() {
+        return Optional.ofNullable(scope);
+    }
 
-	public NameExpr getNameExpr() {
-		return name;
-	}
+    public MethodCallExpr setArguments(final NodeList<Expression> arguments) {
+        assertNotNull(arguments);
+        notifyPropertyChange(ObservableProperty.ARGUMENTS, this.arguments, arguments);
+        if (this.arguments != null)
+            this.arguments.setParentNode(null);
+        this.arguments = arguments;
+        setAsParentNodeOf(arguments);
+        return this;
+    }
 
-	public Expression getScope() {
-		return scope;
-	}
+    @Override
+    public MethodCallExpr setName(final SimpleName name) {
+        assertNotNull(name);
+        notifyPropertyChange(ObservableProperty.NAME, this.name, name);
+        if (this.name != null)
+            this.name.setParentNode(null);
+        this.name = name;
+        setAsParentNodeOf(name);
+        return this;
+    }
 
-	public List<Type> getTypeArgs() {
-        typeArgs = ensureNotNull(typeArgs);
-        return typeArgs;
-	}
+    @Override
+    public MethodCallExpr setScope(final Expression scope) {
+        notifyPropertyChange(ObservableProperty.SCOPE, this.scope, scope);
+        if (this.scope != null)
+            this.scope.setParentNode(null);
+        this.scope = scope;
+        setAsParentNodeOf(scope);
+        return this;
+    }
 
-	public void setArgs(final List<Expression> args) {
-		this.args = args;
-		setAsParentNodeOf(this.args);
-	}
+    @Override
+    public Optional<NodeList<Type>> getTypeArguments() {
+        return Optional.ofNullable(typeArguments);
+    }
 
-	public void setName(final String name) {
-		setNameExpr(new NameExpr(name));
-	}
+    /**
+     * Sets the typeArguments
+     *
+     * @param typeArguments the typeArguments, can be null
+     * @return this, the MethodCallExpr
+     */
+    @Override
+    public MethodCallExpr setTypeArguments(final NodeList<Type> typeArguments) {
+        notifyPropertyChange(ObservableProperty.TYPE_ARGUMENTS, this.typeArguments, typeArguments);
+        if (this.typeArguments != null)
+            this.typeArguments.setParentNode(null);
+        this.typeArguments = typeArguments;
+        setAsParentNodeOf(typeArguments);
+        return this;
+    }
 
-	public void setNameExpr(NameExpr name) {
-		this.name = name;
-		setAsParentNodeOf(this.name);
-	}
+    @Override
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getArguments(), getTypeArguments().orElse(null));
+    }
 
-	public void setScope(final Expression scope) {
-		this.scope = scope;
-		setAsParentNodeOf(this.scope);
-	}
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < arguments.size(); i++) {
+            if (arguments.get(i) == node) {
+                arguments.remove(i);
+                return true;
+            }
+        }
+        if (scope != null) {
+            if (node == scope) {
+                removeScope();
+                return true;
+            }
+        }
+        if (typeArguments != null) {
+            for (int i = 0; i < typeArguments.size(); i++) {
+                if (typeArguments.get(i) == node) {
+                    typeArguments.remove(i);
+                    return true;
+                }
+            }
+        }
+        return super.remove(node);
+    }
 
-	public void setTypeArgs(final List<Type> typeArgs) {
-		this.typeArgs = typeArgs;
-		setAsParentNodeOf(this.typeArgs);
-	}
+    public MethodCallExpr removeScope() {
+        return setScope((Expression) null);
+    }
+
+    @Override
+    public MethodCallExpr clone() {
+        return (MethodCallExpr) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public MethodCallExprMetaModel getMetaModel() {
+        return JavaParserMetaModel.methodCallExprMetaModel;
+    }
 }
+

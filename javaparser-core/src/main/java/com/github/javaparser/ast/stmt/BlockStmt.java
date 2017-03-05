@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,35 +18,44 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
-
 package com.github.javaparser.ast.stmt;
 
-import static com.github.javaparser.utils.Utils.ensureNotNull;
-
-import java.util.List;
-
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.nodeTypes.NodeWithStatements;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import java.util.Arrays;
+import java.util.List;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.BlockStmtMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * Statements in between { and }.
+ *
  * @author Julio Vilmar Gesser
  */
 public final class BlockStmt extends Statement implements NodeWithStatements<BlockStmt> {
 
-    private List<Statement> stmts;
+    private NodeList<Statement> statements;
 
     public BlockStmt() {
+        this(null, new NodeList<>());
     }
 
-    public BlockStmt(final List<Statement> stmts) {
-        setStmts(stmts);
+    @AllFieldsConstructor
+    public BlockStmt(final NodeList<Statement> statements) {
+        this(null, statements);
     }
 
-    public BlockStmt(final Range range, final List<Statement> stmts) {
+    public BlockStmt(final Range range, final NodeList<Statement> statements) {
         super(range);
-        setStmts(stmts);
+        setStatements(statements);
     }
 
     @Override
@@ -59,19 +68,46 @@ public final class BlockStmt extends Statement implements NodeWithStatements<Blo
         v.visit(this, arg);
     }
 
-    @Override
-    public List<Statement> getStmts() {
-        stmts = ensureNotNull(stmts);
-        return stmts;
+    public NodeList<Statement> getStatements() {
+        return statements;
     }
 
-    @Override
-    public BlockStmt setStmts(final List<Statement> stmts) {
-        this.stmts = stmts;
-        setAsParentNodeOf(this.stmts);
+    public BlockStmt setStatements(final NodeList<Statement> statements) {
+        assertNotNull(statements);
+        notifyPropertyChange(ObservableProperty.STATEMENTS, this.statements, statements);
+        if (this.statements != null)
+            this.statements.setParentNode(null);
+        this.statements = statements;
+        setAsParentNodeOf(statements);
         return this;
     }
 
+    @Override
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getStatements());
+    }
 
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < statements.size(); i++) {
+            if (statements.get(i) == node) {
+                statements.remove(i);
+                return true;
+            }
+        }
+        return super.remove(node);
+    }
 
+    @Override
+    public BlockStmt clone() {
+        return (BlockStmt) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public BlockStmtMetaModel getMetaModel() {
+        return JavaParserMetaModel.blockStmtMetaModel;
+    }
 }
+

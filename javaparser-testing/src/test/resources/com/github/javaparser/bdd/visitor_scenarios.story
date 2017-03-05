@@ -46,7 +46,7 @@ public class ToUpperClass {
     }
 }
 When the CompilationUnit is visited by the variable name collector visitor
-Then the collected variable name is "zero;exception;"
+Then the collected variable name is "exception;zero;"
 
 
 Scenario: A class with a try statement is visited using by a GenericVisitorAdapter
@@ -65,12 +65,3 @@ public class ToUpperClass {
 }
 When the CompilationUnit is visited by the visitor that returns variable names
 Then the return variable name is "zero"
-
-
-Scenario: A class with many different Java concepts is visited by a VoidVisitorAdaptor
-
-Given a CompilationUnit
-Given a VoidVisitorAdapter with a visit method that asserts sensible line positions
-When file "JavaConcepts.java" is parsed
-When the CompilationUnit is visited by the PositionTestVisitor
-Then the total number of nodes visited is 1427

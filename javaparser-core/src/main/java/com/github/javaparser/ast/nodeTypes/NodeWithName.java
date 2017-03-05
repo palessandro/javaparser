@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
- * Copyright (C) 2011, 2013-2015 The JavaParser Team.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
  *
@@ -21,15 +21,31 @@
 
 package com.github.javaparser.ast.nodeTypes;
 
-/**
- * A node having a name.
- *  
- * The main reason for this interface is to permit users to manipulate homogeneously all nodes with a getName method.
- * 
- * @since 2.0.1 
- */
-public interface NodeWithName<T> {
-    String getName();
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.expr.Name;
 
-    T setName(String name);
+import static com.github.javaparser.JavaParser.parseName;
+import static com.github.javaparser.utils.Utils.assertNonEmpty;
+
+/**
+ * A node with a (qualified) name.
+ * <p>
+ * The main reason for this interface is to permit users to manipulate homogeneously all nodes with a getName method.
+ *
+ * @since 2.0.1
+ */
+public interface NodeWithName<N extends Node> {
+    Name getName();
+
+    N setName(Name name);
+
+    @SuppressWarnings("unchecked")
+    default N setName(String name) {
+        assertNonEmpty(name);
+        return setName(parseName(name));
+    }
+
+    default String getNameAsString() {
+        return getName().asString();
+    }
 }

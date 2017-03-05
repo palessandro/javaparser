@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,113 +18,80 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
-
 package com.github.javaparser.ast.body;
 
-import static com.github.javaparser.ast.Modifier.*;
-import static com.github.javaparser.ast.type.VoidType.*;
-import static com.github.javaparser.utils.Utils.ensureNotNull;
-
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
 import com.github.javaparser.ast.Modifier;
-import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.AssignExpr;
 import com.github.javaparser.ast.expr.AssignExpr.Operator;
 import com.github.javaparser.ast.expr.NameExpr;
-import com.github.javaparser.ast.nodeTypes.NodeWithJavaDoc;
+import com.github.javaparser.ast.nodeTypes.NodeWithJavadoc;
 import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
-import com.github.javaparser.ast.nodeTypes.NodeWithType;
+import com.github.javaparser.ast.nodeTypes.NodeWithVariables;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.ReturnStmt;
+import com.github.javaparser.ast.type.ArrayType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.type.VoidType;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import java.util.*;
+import static com.github.javaparser.ast.Modifier.PUBLIC;
+import static com.github.javaparser.ast.NodeList.nodeList;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.FieldDeclarationMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * The declaration of a field in a class. "private static int a=15*15;" in this example: <code>class X { private static
+ * int a=15*15; }</code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class FieldDeclaration extends BodyDeclaration<FieldDeclaration>
-        implements NodeWithJavaDoc<FieldDeclaration>, NodeWithType<FieldDeclaration>,
-        NodeWithModifiers<FieldDeclaration> {
+public final class FieldDeclaration extends BodyDeclaration<FieldDeclaration> implements NodeWithJavadoc<FieldDeclaration>, NodeWithModifiers<FieldDeclaration>, NodeWithVariables<FieldDeclaration> {
 
-    private EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
+    private EnumSet<Modifier> modifiers;
 
-    private Type type;
-
-    private List<VariableDeclarator> variables;
+    private NodeList<VariableDeclarator> variables;
 
     public FieldDeclaration() {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), new NodeList<>());
     }
 
-    public FieldDeclaration(EnumSet<Modifier> modifiers, Type type, VariableDeclarator variable) {
-        setModifiers(modifiers);
-        setType(type);
-        List<VariableDeclarator> aux = new ArrayList<>();
-        aux.add(variable);
-        setVariables(aux);
+    public FieldDeclaration(EnumSet<Modifier> modifiers, VariableDeclarator variable) {
+        this(null, modifiers, new NodeList<>(), nodeList(variable));
     }
 
-    public FieldDeclaration(EnumSet<Modifier> modifiers, Type type, List<VariableDeclarator> variables) {
-        setModifiers(modifiers);
-        setType(type);
-        setVariables(variables);
+    public FieldDeclaration(EnumSet<Modifier> modifiers, NodeList<VariableDeclarator> variables) {
+        this(null, modifiers, new NodeList<>(), variables);
     }
 
-    public FieldDeclaration(EnumSet<Modifier> modifiers, List<AnnotationExpr> annotations, Type type,
-                            List<VariableDeclarator> variables) {
-        super(annotations);
-        setModifiers(modifiers);
-        setType(type);
-        setVariables(variables);
+    @AllFieldsConstructor
+    public FieldDeclaration(EnumSet<Modifier> modifiers, NodeList<AnnotationExpr> annotations, NodeList<VariableDeclarator> variables) {
+        this(null, modifiers, annotations, variables);
     }
 
-    public FieldDeclaration(Range range, EnumSet<Modifier> modifiers, List<AnnotationExpr> annotations, Type type,
-                            List<VariableDeclarator> variables) {
+    public FieldDeclaration(Range range, EnumSet<Modifier> modifiers, NodeList<AnnotationExpr> annotations, NodeList<VariableDeclarator> variables) {
         super(range, annotations);
         setModifiers(modifiers);
-        setType(type);
         setVariables(variables);
     }
 
     /**
      * Creates a {@link FieldDeclaration}.
      *
-     * @param modifiers
-     *            modifiers
-     * @param type
-     *            type
-     * @param variable
-     *            variable declarator
-     * @return instance of {@link FieldDeclaration}
+     * @param modifiers modifiers
+     * @param type type
+     * @param name field name
      */
-    public static FieldDeclaration create(EnumSet<Modifier> modifiers, Type type,
-                                                          VariableDeclarator variable) {
-        List<VariableDeclarator> variables = new ArrayList<>();
-        variables.add(variable);
-        return new FieldDeclaration(modifiers, type, variables);
-    }
-
-    /**
-     * Creates a {@link FieldDeclaration}.
-     *
-     * @param modifiers
-     *            modifiers
-     * @param type
-     *            type
-     * @param name
-     *            field name
-     * @return instance of {@link FieldDeclaration}
-     */
-    public static FieldDeclaration create(EnumSet<Modifier> modifiers, Type type, String name) {
-        VariableDeclaratorId id = new VariableDeclaratorId(name);
-        VariableDeclarator variable = new VariableDeclarator(id);
-        return create(modifiers, type, variable);
+    public FieldDeclaration(EnumSet<Modifier> modifiers, Type type, String name) {
+        this(assertNotNull(modifiers), new VariableDeclarator(type, assertNotNull(name)));
     }
 
     @Override
@@ -139,9 +106,9 @@ public final class FieldDeclaration extends BodyDeclaration<FieldDeclaration>
 
     /**
      * Return the modifiers of this member declaration.
-     * 
-     * @see Modifier
+     *
      * @return modifiers
+     * @see Modifier
      */
     @Override
     public EnumSet<Modifier> getModifiers() {
@@ -149,103 +116,110 @@ public final class FieldDeclaration extends BodyDeclaration<FieldDeclaration>
     }
 
     @Override
-    public Type getType() {
-        return type;
-    }
-
-    public List<VariableDeclarator> getVariables() {
-        variables = ensureNotNull(variables);
+    public NodeList<VariableDeclarator> getVariables() {
         return variables;
     }
 
     @Override
-    public FieldDeclaration setModifiers(EnumSet<Modifier> modifiers) {
+    public FieldDeclaration setModifiers(final EnumSet<Modifier> modifiers) {
+        assertNotNull(modifiers);
+        notifyPropertyChange(ObservableProperty.MODIFIERS, this.modifiers, modifiers);
         this.modifiers = modifiers;
         return this;
     }
 
     @Override
-    public FieldDeclaration setType(Type type) {
-        this.type = type;
-        setAsParentNodeOf(this.type);
-        return this;
-    }
-
-    public void setVariables(List<VariableDeclarator> variables) {
+    public FieldDeclaration setVariables(final NodeList<VariableDeclarator> variables) {
+        assertNotNull(variables);
+        notifyPropertyChange(ObservableProperty.VARIABLES, this.variables, variables);
+        if (this.variables != null)
+            this.variables.setParentNode(null);
         this.variables = variables;
-        setAsParentNodeOf(this.variables);
-    }
-
-    @Override
-    public JavadocComment getJavaDoc() {
-        if (getComment() instanceof JavadocComment) {
-            return (JavadocComment) getComment();
-        }
-        return null;
+        setAsParentNodeOf(variables);
+        return this;
     }
 
     /**
      * Create a getter for this field, <b>will only work if this field declares only 1 identifier and if this field is
      * already added to a ClassOrInterfaceDeclaration</b>
-     * 
+     *
      * @return the {@link MethodDeclaration} created
      * @throws IllegalStateException if there is more than 1 variable identifier or if this field isn't attached to a
-     *             class or enum
+     * class or enum
      */
     public MethodDeclaration createGetter() {
         if (getVariables().size() != 1)
             throw new IllegalStateException("You can use this only when the field declares only 1 variable name");
-        ClassOrInterfaceDeclaration parentClass = getParentNodeOfType(ClassOrInterfaceDeclaration.class);
-        EnumDeclaration parentEnum = getParentNodeOfType(EnumDeclaration.class);
-        if ((parentClass == null && parentEnum == null) || (parentClass != null && parentClass.isInterface()))
-            throw new IllegalStateException(
-                    "You can use this only when the field is attached to a class or an enum");
-
-        String fieldName = getVariables().get(0).getId().getName();
+        Optional<ClassOrInterfaceDeclaration> parentClass = getAncestorOfType(ClassOrInterfaceDeclaration.class);
+        Optional<EnumDeclaration> parentEnum = getAncestorOfType(EnumDeclaration.class);
+        if (!(parentClass.isPresent() || parentEnum.isPresent()) || (parentClass.isPresent() && parentClass.get().isInterface()))
+            throw new IllegalStateException("You can use this only when the field is attached to a class or an enum");
+        VariableDeclarator variable = getVariable(0);
+        String fieldName = variable.getNameAsString();
         String fieldNameUpper = fieldName.toUpperCase().substring(0, 1) + fieldName.substring(1, fieldName.length());
         final MethodDeclaration getter;
-        if (parentClass != null)
-            getter = parentClass.addMethod("get" + fieldNameUpper, PUBLIC);
-        else
-            getter = parentEnum.addMethod("get" + fieldNameUpper, PUBLIC);
-        getter.setType(getType());
+        getter = parentClass.map( clazz -> clazz.addMethod("get" + fieldNameUpper, PUBLIC)).orElseGet(() -> parentEnum.get().addMethod("get" + fieldNameUpper, PUBLIC));
+        getter.setType(variable.getType());
         BlockStmt blockStmt = new BlockStmt();
         getter.setBody(blockStmt);
-        blockStmt.addStatement(new ReturnStmt(NameExpr.create(fieldName)));
+        blockStmt.addStatement(new ReturnStmt(fieldName));
         return getter;
     }
 
     /**
      * Create a setter for this field, <b>will only work if this field declares only 1 identifier and if this field is
      * already added to a ClassOrInterfaceDeclaration</b>
-     * 
+     *
      * @return the {@link MethodDeclaration} created
      * @throws IllegalStateException if there is more than 1 variable identifier or if this field isn't attached to a
-     *             class or enum
+     * class or enum
      */
     public MethodDeclaration createSetter() {
         if (getVariables().size() != 1)
             throw new IllegalStateException("You can use this only when the field declares only 1 variable name");
-        ClassOrInterfaceDeclaration parentClass = getParentNodeOfType(ClassOrInterfaceDeclaration.class);
-        EnumDeclaration parentEnum = getParentNodeOfType(EnumDeclaration.class);
-        if ((parentClass == null && parentEnum == null) || (parentClass != null && parentClass.isInterface()))
-            throw new IllegalStateException(
-                    "You can use this only when the field is attached to a class or an enum");
-
-        String fieldName = getVariables().get(0).getId().getName();
+        Optional<ClassOrInterfaceDeclaration> parentClass = getAncestorOfType(ClassOrInterfaceDeclaration.class);
+        Optional<EnumDeclaration> parentEnum = getAncestorOfType(EnumDeclaration.class);
+        if (!(parentClass.isPresent() || parentEnum.isPresent()) || (parentClass.isPresent() && parentClass.get().isInterface()))
+            throw new IllegalStateException("You can use this only when the field is attached to a class or an enum");
+        VariableDeclarator variable = getVariable(0);
+        String fieldName = variable.getNameAsString();
         String fieldNameUpper = fieldName.toUpperCase().substring(0, 1) + fieldName.substring(1, fieldName.length());
-
         final MethodDeclaration setter;
-        if (parentClass != null)
-            setter = parentClass.addMethod("set" + fieldNameUpper, PUBLIC);
-        else
-            setter = parentEnum.addMethod("set" + fieldNameUpper, PUBLIC);
-        setter.setType(VOID_TYPE);
-        setter.getParameters().add(new Parameter(getType(), new VariableDeclaratorId(fieldName)));
+        setter = parentClass.map( clazz -> clazz.addMethod("set" + fieldNameUpper, PUBLIC)).orElseGet(() -> parentEnum.get().addMethod("set" + fieldNameUpper, PUBLIC));
+        setter.setType(new VoidType());
+        setter.getParameters().add(new Parameter(variable.getType(), fieldName));
         BlockStmt blockStmt2 = new BlockStmt();
         setter.setBody(blockStmt2);
-        blockStmt2.addStatement(new AssignExpr(new NameExpr("this." + fieldName), new NameExpr(fieldName), Operator.assign));
+        blockStmt2.addStatement(new AssignExpr(new NameExpr("this." + fieldName), new NameExpr(fieldName), Operator.ASSIGN));
         return setter;
     }
 
+    @Override
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getVariables(), getAnnotations());
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < variables.size(); i++) {
+            if (variables.get(i) == node) {
+                variables.remove(i);
+                return true;
+            }
+        }
+        return super.remove(node);
+    }
+
+    @Override
+    public FieldDeclaration clone() {
+        return (FieldDeclaration) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public FieldDeclarationMetaModel getMetaModel() {
+        return JavaParserMetaModel.fieldDeclarationMetaModel;
+    }
 }
+

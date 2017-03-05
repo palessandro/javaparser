@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,14 +18,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.expr;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.ArrayAccessExprMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * Array brackets [] being used to get a value from an array.
+ * In <br/><code>getNames()[15*15]</code> the name expression is getNames() and the index expression is 15*15.
+ *
  * @author Julio Vilmar Gesser
  */
 public final class ArrayAccessExpr extends Expression {
@@ -35,11 +44,12 @@ public final class ArrayAccessExpr extends Expression {
     private Expression index;
 
     public ArrayAccessExpr() {
+        this(null, new NameExpr(), new IntegerLiteralExpr());
     }
 
+    @AllFieldsConstructor
     public ArrayAccessExpr(Expression name, Expression index) {
-        setName(name);
-        setIndex(index);
+        this(null, name, index);
     }
 
     public ArrayAccessExpr(Range range, Expression name, Expression index) {
@@ -66,13 +76,41 @@ public final class ArrayAccessExpr extends Expression {
         return name;
     }
 
-    public void setIndex(Expression index) {
+    public ArrayAccessExpr setIndex(final Expression index) {
+        assertNotNull(index);
+        notifyPropertyChange(ObservableProperty.INDEX, this.index, index);
+        if (this.index != null)
+            this.index.setParentNode(null);
         this.index = index;
-		setAsParentNodeOf(this.index);
+        setAsParentNodeOf(index);
+        return this;
     }
 
-    public void setName(Expression name) {
+    public ArrayAccessExpr setName(final Expression name) {
+        assertNotNull(name);
+        notifyPropertyChange(ObservableProperty.NAME, this.name, name);
+        if (this.name != null)
+            this.name.setParentNode(null);
         this.name = name;
-		setAsParentNodeOf(this.name);
+        setAsParentNodeOf(name);
+        return this;
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public ArrayAccessExpr clone() {
+        return (ArrayAccessExpr) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public ArrayAccessExprMetaModel getMetaModel() {
+        return JavaParserMetaModel.arrayAccessExprMetaModel;
     }
 }
+

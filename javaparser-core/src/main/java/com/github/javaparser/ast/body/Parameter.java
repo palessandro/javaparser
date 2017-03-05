@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,75 +18,89 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.body;
 
-import java.util.EnumSet;
-import java.util.List;
-
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.expr.AnnotationExpr;
+import com.github.javaparser.ast.expr.SimpleName;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
-import com.github.javaparser.ast.nodeTypes.NodeWithName;
+import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.github.javaparser.ast.nodeTypes.NodeWithType;
+import com.github.javaparser.ast.observer.ObservableProperty;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
-
-import static com.github.javaparser.utils.Utils.ensureNotNull;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.ParameterMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * The parameters to a method or lambda. Lambda parameters may have inferred types, in that case "type" is UnknownType.
+ * <br/>Note that <a href="https://en.wikipedia.org/wiki/Parameter_(computer_programming)#Parameters_and_arguments">parameters
+ * are different from arguments.</a> <br/>"String x" and "float y" are the parameters in <code>int abc(String x, float
+ * y) {...}</code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class Parameter extends Node implements NodeWithType<Parameter>, NodeWithAnnotations<Parameter>, NodeWithName<Parameter>, NodeWithModifiers<Parameter> {
+public final class Parameter extends Node implements NodeWithType<Parameter, Type>, NodeWithAnnotations<Parameter>, NodeWithSimpleName<Parameter>, NodeWithModifiers<Parameter> {
+
     private Type type;
 
     private boolean isVarArgs;
 
-    private EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
+    private NodeList<AnnotationExpr> varArgsAnnotations;
 
-    private List<AnnotationExpr> annotations;
+    private EnumSet<Modifier> modifiers;
 
-    private VariableDeclaratorId id;
+    private NodeList<AnnotationExpr> annotations;
+
+    private SimpleName name;
 
     public Parameter() {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), new ClassOrInterfaceType(), false, new NodeList<>(), new SimpleName());
     }
 
-    public Parameter(Type type, VariableDeclaratorId id) {
-        setId(id);
-        setType(type);
+    public Parameter(Type type, SimpleName name) {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), type, false, new NodeList<>(), name);
     }
 
     /**
      * Creates a new {@link Parameter}.
      *
-     * @param type
-     *            type of the parameter
-     * @param name
-     *            name of the parameter
-     * @return instance of {@link Parameter}
+     * @param type type of the parameter
+     * @param name name of the parameter
      */
-    public static Parameter create(Type type, String name) {
-        return new Parameter(type, new VariableDeclaratorId(name));
+    public Parameter(Type type, String name) {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), type, false, new NodeList<>(), new SimpleName(name));
     }
 
-    public Parameter(EnumSet<Modifier> modifiers, Type type, VariableDeclaratorId id) {
-        setModifiers(modifiers);
-        setId(id);
-        setType(type);
+    public Parameter(EnumSet<Modifier> modifiers, Type type, SimpleName name) {
+        this(null, modifiers, new NodeList<>(), type, false, new NodeList<>(), name);
     }
 
-    public Parameter(final Range range, EnumSet<Modifier> modifiers, List<AnnotationExpr> annotations, Type type,
-                     boolean isVarArgs, VariableDeclaratorId id) {
+    @AllFieldsConstructor
+    public Parameter(EnumSet<Modifier> modifiers, NodeList<AnnotationExpr> annotations, Type type, boolean isVarArgs, NodeList<AnnotationExpr> varArgsAnnotations, SimpleName name) {
+        this(null, modifiers, annotations, type, isVarArgs, varArgsAnnotations, name);
+    }
+
+    public Parameter(final Range range, EnumSet<Modifier> modifiers, NodeList<AnnotationExpr> annotations, Type type, boolean isVarArgs, NodeList<AnnotationExpr> varArgsAnnotations, SimpleName name) {
         super(range);
         setModifiers(modifiers);
         setAnnotations(annotations);
-        setId(id);
+        setName(name);
         setType(type);
         setVarArgs(isVarArgs);
+        setVarArgsAnnotations(varArgsAnnotations);
     }
 
     @Override
@@ -109,48 +123,40 @@ public final class Parameter extends Node implements NodeWithType<Parameter>, No
     }
 
     @Override
-    public Parameter setType(Type type) {
+    public Parameter setType(final Type type) {
+        assertNotNull(type);
+        notifyPropertyChange(ObservableProperty.TYPE, this.type, type);
+        if (this.type != null)
+            this.type.setParentNode(null);
         this.type = type;
-		setAsParentNodeOf(this.type);
+        setAsParentNodeOf(type);
         return this;
     }
 
-    public void setVarArgs(boolean isVarArgs) {
+    public Parameter setVarArgs(final boolean isVarArgs) {
+        notifyPropertyChange(ObservableProperty.VAR_ARGS, this.isVarArgs, isVarArgs);
         this.isVarArgs = isVarArgs;
+        return this;
     }
+
     /**
      * @return the list returned could be immutable (in that case it will be empty)
      */
     @Override
-    public List<AnnotationExpr> getAnnotations() {
-        annotations = ensureNotNull(annotations);
+    public NodeList<AnnotationExpr> getAnnotations() {
         return annotations;
     }
 
-    public VariableDeclaratorId getId() {
-        return id;
-    }
-
     @Override
-    public String getName() {
-        return getId().getName();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Parameter setName(String name) {
-        if (id != null)
-            id.setName(name);
-        else
-            id = new VariableDeclaratorId(name);
-        return this;
+    public SimpleName getName() {
+        return name;
     }
 
     /**
      * Return the modifiers of this parameter declaration.
      *
-     * @see Modifier
      * @return modifiers
+     * @see Modifier
      */
     @Override
     public EnumSet<Modifier> getModifiers() {
@@ -158,26 +164,85 @@ public final class Parameter extends Node implements NodeWithType<Parameter>, No
     }
 
     /**
-     * @param annotations a null value is currently treated as an empty list. This behavior could change
-     *            in the future, so please avoid passing null
+     * @param annotations a null value is currently treated as an empty list. This behavior could change in the future,
+     * so please avoid passing null
      */
     @Override
-    @SuppressWarnings("unchecked")
-    public Parameter setAnnotations(List<AnnotationExpr> annotations) {
+    public Parameter setAnnotations(final NodeList<AnnotationExpr> annotations) {
+        assertNotNull(annotations);
+        notifyPropertyChange(ObservableProperty.ANNOTATIONS, this.annotations, annotations);
+        if (this.annotations != null)
+            this.annotations.setParentNode(null);
         this.annotations = annotations;
-        setAsParentNodeOf(this.annotations);
+        setAsParentNodeOf(annotations);
         return this;
     }
 
-    public void setId(VariableDeclaratorId id) {
-        this.id = id;
-        setAsParentNodeOf(this.id);
+    @Override
+    public Parameter setName(final SimpleName name) {
+        assertNotNull(name);
+        notifyPropertyChange(ObservableProperty.NAME, this.name, name);
+        if (this.name != null)
+            this.name.setParentNode(null);
+        this.name = name;
+        setAsParentNodeOf(name);
+        return this;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Parameter setModifiers(EnumSet<Modifier> modifiers) {
+    public Parameter setModifiers(final EnumSet<Modifier> modifiers) {
+        assertNotNull(modifiers);
+        notifyPropertyChange(ObservableProperty.MODIFIERS, this.modifiers, modifiers);
         this.modifiers = modifiers;
         return this;
     }
+
+    @Override
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getAnnotations(), getVarArgsAnnotations());
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        for (int i = 0; i < annotations.size(); i++) {
+            if (annotations.get(i) == node) {
+                annotations.remove(i);
+                return true;
+            }
+        }
+        for (int i = 0; i < varArgsAnnotations.size(); i++) {
+            if (varArgsAnnotations.get(i) == node) {
+                varArgsAnnotations.remove(i);
+                return true;
+            }
+        }
+        return super.remove(node);
+    }
+
+    public NodeList<AnnotationExpr> getVarArgsAnnotations() {
+        return varArgsAnnotations;
+    }
+
+    public Parameter setVarArgsAnnotations(final NodeList<AnnotationExpr> varArgsAnnotations) {
+        assertNotNull(varArgsAnnotations);
+        notifyPropertyChange(ObservableProperty.VAR_ARGS_ANNOTATIONS, this.varArgsAnnotations, varArgsAnnotations);
+        if (this.varArgsAnnotations != null)
+            this.varArgsAnnotations.setParentNode(null);
+        this.varArgsAnnotations = varArgsAnnotations;
+        setAsParentNodeOf(varArgsAnnotations);
+        return this;
+    }
+
+    @Override
+    public Parameter clone() {
+        return (Parameter) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public ParameterMetaModel getMetaModel() {
+        return JavaParserMetaModel.parameterMetaModel;
+    }
 }
+

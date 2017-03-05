@@ -1,42 +1,68 @@
-package com.github.javaparser.ast.nodeTypes;
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+package com.github.javaparser.ast.nodeTypes;
 
 import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.Node;
-import com.github.javaparser.ast.body.BodyDeclaration;
-import com.github.javaparser.ast.body.ConstructorDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.InitializerDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.body.VariableDeclaratorId;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.ast.type.VoidType;
 
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Optional;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.*;
 
-import static com.github.javaparser.ast.type.VoidType.VOID_TYPE;
-
 /**
  * A node having members.
- *
+ * <p>
  * The main reason for this interface is to permit users to manipulate homogeneously all nodes with a getMembers
  * method.
- *
  */
-public interface NodeWithMembers<T> {
-    List<BodyDeclaration<?>> getMembers();
+public interface NodeWithMembers<N extends Node> {
+    NodeList<BodyDeclaration<?>> getMembers();
 
-    T setMembers(List<BodyDeclaration<?>> members);
+    default BodyDeclaration<?> getMember(int i) {
+        return getMembers().get(i);
+    }
+
+    @SuppressWarnings("unchecked")
+    default N setMember(int i, BodyDeclaration<?> member) {
+        getMembers().set(i, member);
+        return (N) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    default N addMember(BodyDeclaration<?> member) {
+        getMembers().add(member);
+        return (N) this;
+    }
+
+    N setMembers(NodeList<BodyDeclaration<?>> members);
 
     /**
      * Add a field to this and automatically add the import of the type if needed
@@ -73,12 +99,11 @@ public interface NodeWithMembers<T> {
      */
     default FieldDeclaration addField(Type type, String name, Modifier... modifiers) {
         FieldDeclaration fieldDeclaration = new FieldDeclaration();
-        fieldDeclaration.getVariables().add(new VariableDeclarator(new VariableDeclaratorId(name)));
+        VariableDeclarator variable = new VariableDeclarator(type, name);
+        fieldDeclaration.getVariables().add(variable);
         fieldDeclaration.setModifiers(Arrays.stream(modifiers)
                 .collect(toCollection(() -> EnumSet.noneOf(Modifier.class))));
-        fieldDeclaration.setType(type);
         getMembers().add(fieldDeclaration);
-        fieldDeclaration.setParentNode((Node) this);
         return fieldDeclaration;
     }
 
@@ -107,8 +132,6 @@ public interface NodeWithMembers<T> {
 
     /**
      * Add a public field to this
-     * 
-     * @param typeClass the type of the field
      *
      * @param typeClass the type of the field
      * @param name the name of the field
@@ -163,27 +186,25 @@ public interface NodeWithMembers<T> {
     default MethodDeclaration addMethod(String methodName, Modifier... modifiers) {
         MethodDeclaration methodDeclaration = new MethodDeclaration();
         methodDeclaration.setName(methodName);
-        methodDeclaration.setType(VOID_TYPE);
+        methodDeclaration.setType(new VoidType());
         methodDeclaration.setModifiers(Arrays.stream(modifiers)
                 .collect(toCollection(() -> EnumSet.noneOf(Modifier.class))));
         getMembers().add(methodDeclaration);
-        methodDeclaration.setParentNode((Node) this);
         return methodDeclaration;
     }
 
     /**
      * Adds a constructor to this
-     * 
+     *
      * @param modifiers the modifiers like {@link Modifier#PUBLIC}
      * @return the {@link MethodDeclaration} created
      */
-    default ConstructorDeclaration addCtor(Modifier... modifiers) {
+    default ConstructorDeclaration addConstructor(Modifier... modifiers) {
         ConstructorDeclaration constructorDeclaration = new ConstructorDeclaration();
         constructorDeclaration.setModifiers(Arrays.stream(modifiers)
                 .collect(toCollection(() -> EnumSet.noneOf(Modifier.class))));
         constructorDeclaration.setName(((TypeDeclaration<?>) this).getName());
         getMembers().add(constructorDeclaration);
-        constructorDeclaration.setParentNode((Node) this);
         return constructorDeclaration;
     }
 
@@ -191,7 +212,6 @@ public interface NodeWithMembers<T> {
         BlockStmt block = new BlockStmt();
         InitializerDeclaration initializerDeclaration = new InitializerDeclaration(false, block);
         getMembers().add(initializerDeclaration);
-        initializerDeclaration.setParentNode((Node) this);
         return block;
     }
 
@@ -199,7 +219,6 @@ public interface NodeWithMembers<T> {
         BlockStmt block = new BlockStmt();
         InitializerDeclaration initializerDeclaration = new InitializerDeclaration(true, block);
         getMembers().add(initializerDeclaration);
-        initializerDeclaration.setParentNode((Node) this);
         return block;
     }
 
@@ -207,12 +226,12 @@ public interface NodeWithMembers<T> {
      * Try to find a {@link MethodDeclaration} by its name
      *
      * @param name the name of the method
-     * @return the methods found (multiple in case of polymorphism)
+     * @return the methods found (multiple in case of overloading)
      */
     default List<MethodDeclaration> getMethodsByName(String name) {
-        return getMembers().stream()
-                .filter(m -> m instanceof MethodDeclaration && ((MethodDeclaration) m).getName().equals(name))
-                .map(m -> (MethodDeclaration) m).collect(toList());
+        return unmodifiableList(getMethods().stream()
+                .filter(m -> m.getNameAsString().equals(name))
+                .map(m -> m).collect(toList()));
     }
 
     /**
@@ -230,32 +249,40 @@ public interface NodeWithMembers<T> {
     /**
      * Try to find a {@link MethodDeclaration} by its parameters types
      *
-     * @param paramTypes the types of parameters like "Map&lt;Integer,String&gt;","int" to match<br>
-     *            void foo(Map&lt;Integer,String&gt; myMap,int number)
-     * @return the methods found (multiple in case of polymorphism)
+     * @param paramTypes the types of parameters like "Map&lt;Integer,String&gt;","int" to match<br> void
+     * foo(Map&lt;Integer,String&gt; myMap,int number)
+     * @return the methods found (multiple in case of overloading)
      */
     default List<MethodDeclaration> getMethodsByParameterTypes(String... paramTypes) {
-        return getMembers().stream()
-                .filter(m -> m instanceof MethodDeclaration
-                        && ((MethodDeclaration) m).getParameters().stream().map(p -> p.getType().toString())
-                                .collect(toSet()).equals(Stream.of(paramTypes).collect(toSet())))
-                .map(m -> (MethodDeclaration) m).collect(toList());
+        return unmodifiableList(getMethods().stream()
+                .filter(m -> m.hasParametersOfType(paramTypes))
+                .map(m -> m).collect(toList()));
+    }
+
+    /**
+     * Try to find {@link MethodDeclaration}s by their name and parameters types
+     *
+     * @param paramTypes the types of parameters like "Map&lt;Integer,String&gt;","int" to match<br> void
+     * foo(Map&lt;Integer,String&gt; myMap,int number)
+     * @return the methods found (multiple in case of overloading)
+     */
+    default List<MethodDeclaration> getMethodsBySignature(String name, String... paramTypes) {
+        return unmodifiableList(getMethodsByName(name).stream()
+                .filter(m -> m.hasParametersOfType(paramTypes))
+                .map(m -> m).collect(toList()));
     }
 
     /**
      * Try to find a {@link MethodDeclaration} by its parameters types
      *
-     * @param paramTypes the types of parameters like "Map&lt;Integer,String&gt;","int" to match<br>
-     *            void foo(Map&lt;Integer,String&gt; myMap,int number)
-     * @return the methods found (multiple in case of polymorphism)
+     * @param paramTypes the types of parameters like "Map&lt;Integer,String&gt;","int" to match<br> void
+     * foo(Map&lt;Integer,String&gt; myMap,int number)
+     * @return the methods found (multiple in case of overloading)
      */
     default List<MethodDeclaration> getMethodsByParameterTypes(Class<?>... paramTypes) {
-        return getMembers().stream()
-                .filter(m -> m instanceof MethodDeclaration
-                        && ((MethodDeclaration) m).getParameters().stream().map(p -> p.getType().toString())
-                                .collect(toSet())
-                                .equals(Stream.of(paramTypes).map(Class::getSimpleName).collect(toSet())))
-                .map(m -> (MethodDeclaration) m).collect(toList());
+        return unmodifiableList(getMethods().stream()
+                .filter(m -> m.hasParametersOfType(paramTypes))
+                .collect(toList()));
     }
 
     /**
@@ -264,21 +291,24 @@ public interface NodeWithMembers<T> {
      * @param name the name of the field
      * @return null if not found, the FieldDeclaration otherwise
      */
-    default FieldDeclaration getFieldByName(String name) {
-        return (FieldDeclaration) getMembers().stream()
-                .filter(m -> m instanceof FieldDeclaration && ((FieldDeclaration) m).getVariables().stream()
-                        .anyMatch(var -> var.getId().getName().equals(name)))
-                .findFirst().orElse(null);
+    default Optional<FieldDeclaration> getFieldByName(String name) {
+        return getMembers().stream()
+                .filter(m -> m instanceof FieldDeclaration)
+                .map(f -> (FieldDeclaration) f)
+                .filter(f -> f.getVariables().stream()
+                        .anyMatch(var -> var.getNameAsString().equals(name)))
+                .findFirst()
+                .map(f -> f);
     }
 
     /**
-	 * Find all fields in the members of this node.
+     * Find all fields in the members of this node.
      *
-	 * @return the fields found. This list is immutable.
+     * @return the fields found. This list is immutable.
      */
     default List<FieldDeclaration> getFields() {
         return unmodifiableList(getMembers().stream()
-                .filter(m -> m instanceof FieldDeclaration )
+                .filter(m -> m instanceof FieldDeclaration)
                 .map(m -> (FieldDeclaration) m)
                 .collect(toList()));
     }

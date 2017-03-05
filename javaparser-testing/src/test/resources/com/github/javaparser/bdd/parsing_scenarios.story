@@ -316,13 +316,24 @@ class A {
 Then all nodes refer to their parent
 
 
-Scenario: Parsing trailing semicolons at the end of the imports area should work
-
+Scenario: Parsing excess semicolons on CompilationUnit level should work
 Given a CompilationUnit
 When the following source is parsed:
-import foo.a;;
+;
+package a;
+;
+import foo.a;
+;
+class A { }
+;
+Then no errors are reported
 
-class A {
+Scenario: Parsing excess semicolons in an AnnotationTypeDeclaration should work
+Given a CompilationUnit
+When the following source is parsed:
+@interface A {
+    ;
+    ;
 }
 Then no errors are reported
 
@@ -377,7 +388,7 @@ class A {
         world";
     }
 }
-Then the Java parser cannot parse it because of lexical errors
+Then the Java parser cannot parse it because of an error
 
 Scenario: Chars with unescaped newlines are illegal (issue 211)
 Given the class:
@@ -387,7 +398,7 @@ class A {
 ';
     }
 }
-Then the Java parser cannot parse it because of lexical errors
+Then the Java parser cannot parse it because of an error
 
 Scenario: Diamond Operator information is exposed
 
@@ -462,6 +473,12 @@ public class Example {
 }
 Then no errors are reported
 
+Scenario: alternative [] placings
+Given a CompilationUnit
+When the following source is parsed:
+class I{int[]bar(int[]x[])[]{return new int[][]{};}}
+Then no errors are reported
+
 Scenario: try requires resources, a finally or a catch (issue 442)
 Given the class:
 class A {
@@ -470,5 +487,14 @@ class A {
         }
     }
 }
-Then the Java parser cannot parse it because of a parse error
+Then the Java parser cannot parse it because of an error
 
+
+Scenario: Partially dimensioned arrays are fine
+Given a CompilationUnit
+When the following source is parsed:
+class X {
+    int a = new int @A [10] @A [20] @A [] [];
+    int b = new int @A [] @A []{{1}};
+}
+Then no errors are reported

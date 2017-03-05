@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,39 +18,49 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.body;
 
 import com.github.javaparser.Range;
-import com.github.javaparser.ast.comments.JavadocComment;
-import com.github.javaparser.ast.nodeTypes.NodeWithJavaDoc;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
+import com.github.javaparser.ast.nodeTypes.NodeWithJavadoc;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import java.util.Arrays;
+import java.util.List;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.InitializerDeclarationMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A (possibly static) initializer body. "static { a=3; }" in this example: <code>class X { static { a=3; }  } </code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class InitializerDeclaration extends BodyDeclaration<InitializerDeclaration>
-        implements NodeWithJavaDoc<InitializerDeclaration> {
+public final class InitializerDeclaration extends BodyDeclaration<InitializerDeclaration> implements NodeWithJavadoc<InitializerDeclaration>, NodeWithBlockStmt<InitializerDeclaration> {
 
     private boolean isStatic;
 
-    private BlockStmt block;
+    private BlockStmt body;
 
     public InitializerDeclaration() {
+        this(null, false, new BlockStmt());
     }
 
-    public InitializerDeclaration(boolean isStatic, BlockStmt block) {
-        super(null);
-        setStatic(isStatic);
-        setBlock(block);
+    @AllFieldsConstructor
+    public InitializerDeclaration(boolean isStatic, BlockStmt body) {
+        this(null, isStatic, body);
     }
 
-    public InitializerDeclaration(Range range, boolean isStatic, BlockStmt block) {
-        super(range, null);
+    public InitializerDeclaration(Range range, boolean isStatic, BlockStmt body) {
+        super(range, new NodeList<>());
         setStatic(isStatic);
-        setBlock(block);
+        setBody(body);
     }
 
     @Override
@@ -63,28 +73,50 @@ public final class InitializerDeclaration extends BodyDeclaration<InitializerDec
         v.visit(this, arg);
     }
 
-    public BlockStmt getBlock() {
-        return block;
+    public BlockStmt getBody() {
+        return body;
     }
 
     public boolean isStatic() {
         return isStatic;
     }
 
-    public void setBlock(BlockStmt block) {
-        this.block = block;
-		setAsParentNodeOf(this.block);
+    public InitializerDeclaration setBody(final BlockStmt body) {
+        assertNotNull(body);
+        notifyPropertyChange(ObservableProperty.BODY, this.body, body);
+        if (this.body != null)
+            this.body.setParentNode(null);
+        this.body = body;
+        setAsParentNodeOf(body);
+        return this;
     }
 
-    public void setStatic(boolean isStatic) {
+    public InitializerDeclaration setStatic(final boolean isStatic) {
+        notifyPropertyChange(ObservableProperty.STATIC, this.isStatic, isStatic);
         this.isStatic = isStatic;
+        return this;
     }
 
     @Override
-    public JavadocComment getJavaDoc() {
-        if(getComment() instanceof JavadocComment){
-            return (JavadocComment) getComment();
-        }
-        return null;
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getAnnotations());
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public InitializerDeclaration clone() {
+        return (InitializerDeclaration) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public InitializerDeclarationMetaModel getMetaModel() {
+        return JavaParserMetaModel.initializerDeclarationMetaModel;
     }
 }
+

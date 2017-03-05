@@ -1,14 +1,14 @@
 /*
  * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
- * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ * Copyright (C) 2011, 2013-2017 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,107 +18,69 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
-
 package com.github.javaparser.ast.body;
-
-import static com.github.javaparser.utils.Utils.ensureNotNull;
-
-import java.util.EnumSet;
-import java.util.List;
 
 import com.github.javaparser.Range;
 import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.AllFieldsConstructor;
 import com.github.javaparser.ast.Modifier;
-import com.github.javaparser.ast.TypeParameter;
-import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.NameExpr;
-import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
-import com.github.javaparser.ast.nodeTypes.NodeWithDeclaration;
-import com.github.javaparser.ast.nodeTypes.NodeWithJavaDoc;
-import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
-import com.github.javaparser.ast.nodeTypes.NodeWithName;
-import com.github.javaparser.ast.nodeTypes.NodeWithParameters;
-import com.github.javaparser.ast.nodeTypes.NodeWithThrowable;
-import com.github.javaparser.ast.nodeTypes.NodeWithType;
+import com.github.javaparser.ast.expr.SimpleName;
+import com.github.javaparser.ast.nodeTypes.*;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.ast.type.TypeParameter;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Optional;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.MethodDeclarationMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
+ * A method declaration. "public int abc() {return 1;}" in this example: <code>class X { public int abc() {return 1;}
+ * }</code>
+ *
  * @author Julio Vilmar Gesser
  */
-public final class MethodDeclaration extends BodyDeclaration<MethodDeclaration>
-        implements NodeWithJavaDoc<MethodDeclaration>, NodeWithDeclaration, NodeWithName<MethodDeclaration>,
-        NodeWithType<MethodDeclaration>,
-        NodeWithModifiers<MethodDeclaration>, NodeWithParameters<MethodDeclaration>,
-        NodeWithThrowable<MethodDeclaration>, NodeWithBlockStmt<MethodDeclaration> {
+public final class MethodDeclaration extends CallableDeclaration<MethodDeclaration> implements NodeWithType<MethodDeclaration, Type>, NodeWithOptionalBlockStmt<MethodDeclaration>, NodeWithModifiers<MethodDeclaration>, NodeWithJavadoc<MethodDeclaration>, NodeWithDeclaration, NodeWithSimpleName<MethodDeclaration>, NodeWithParameters<MethodDeclaration>, NodeWithThrownExceptions<MethodDeclaration>, NodeWithTypeParameters<MethodDeclaration> {
 
-    private EnumSet<Modifier> modifiers = EnumSet.noneOf(Modifier.class);
-
-    private List<TypeParameter> typeParameters;
+    private boolean isDefault;
 
     private Type type;
 
-    private NameExpr name;
-
-    private List<Parameter> parameters;
-
-    private int arrayCount;
-
-    private List<ReferenceType> throws_;
-
     private BlockStmt body;
 
-    private boolean isDefault = false;
-
     public MethodDeclaration() {
+        this(null, EnumSet.noneOf(Modifier.class), new NodeList<>(), new NodeList<>(), new ClassOrInterfaceType(), new SimpleName(), false, new NodeList<>(), new NodeList<>(), new BlockStmt());
     }
 
     public MethodDeclaration(final EnumSet<Modifier> modifiers, final Type type, final String name) {
-        setModifiers(modifiers);
-        setType(type);
-        setName(name);
+        this(null, modifiers, new NodeList<>(), new NodeList<>(), type, new SimpleName(name), false, new NodeList<>(), new NodeList<>(), new BlockStmt());
     }
 
-    public MethodDeclaration(final EnumSet<Modifier> modifiers, final Type type, final String name,
-                             final List<Parameter> parameters) {
-        setModifiers(modifiers);
-        setType(type);
-        setName(name);
-        setParameters(parameters);
+    public MethodDeclaration(final EnumSet<Modifier> modifiers, final String name, final Type type, final NodeList<Parameter> parameters) {
+        this(null, modifiers, new NodeList<>(), new NodeList<>(), type, new SimpleName(name), false, parameters, new NodeList<>(), new BlockStmt());
     }
 
-    public MethodDeclaration(final EnumSet<Modifier> modifiers, final List<AnnotationExpr> annotations,
-                             final List<TypeParameter> typeParameters, final Type type, final String name,
-                             final List<Parameter> parameters, final int arrayCount, final List<ReferenceType> throws_,
-                             final BlockStmt body) {
-        super(annotations);
-        setModifiers(modifiers);
-        setTypeParameters(typeParameters);
-        setType(type);
-        setName(name);
-        setParameters(parameters);
-        setArrayCount(arrayCount);
-        setThrows(throws_);
-        setBody(body);
+    @AllFieldsConstructor
+    public MethodDeclaration(final EnumSet<Modifier> modifiers, final NodeList<AnnotationExpr> annotations, final NodeList<TypeParameter> typeParameters, final Type type, final SimpleName name, final boolean isDefault, final NodeList<Parameter> parameters, final NodeList<ReferenceType> thrownExceptions, final BlockStmt body) {
+        this(null, modifiers, annotations, typeParameters, type, name, isDefault, parameters, thrownExceptions, body);
     }
 
-    public MethodDeclaration(Range range,
-                             final EnumSet<Modifier> modifiers, final List<AnnotationExpr> annotations,
-                             final List<TypeParameter> typeParameters, final Type type, final String name,
-                             final List<Parameter> parameters, final int arrayCount, final List<ReferenceType> throws_,
-                             final BlockStmt body) {
-        super(range, annotations);
-        setModifiers(modifiers);
-        setTypeParameters(typeParameters);
+    public MethodDeclaration(Range range, final EnumSet<Modifier> modifiers, final NodeList<AnnotationExpr> annotations, final NodeList<TypeParameter> typeParameters, final Type type, final SimpleName name, final boolean isDefault, final NodeList<Parameter> parameters, final NodeList<ReferenceType> thrownExceptions, final BlockStmt body) {
+        super(range, modifiers, annotations, typeParameters, name, parameters, thrownExceptions);
         setType(type);
-        setName(name);
-        setParameters(parameters);
-        setArrayCount(arrayCount);
-        setThrows(throws_);
+        setDefault(isDefault);
         setBody(body);
     }
 
@@ -132,45 +94,25 @@ public final class MethodDeclaration extends BodyDeclaration<MethodDeclaration>
         v.visit(this, arg);
     }
 
-    public int getArrayCount() {
-        return arrayCount;
-    }
-
     @Override
-    public BlockStmt getBody() {
-        return body;
+    public Optional<BlockStmt> getBody() {
+        return Optional.ofNullable(body);
     }
 
     /**
-     * Return the modifiers of this member declaration.
-     * 
-     * @see Modifier
-     * @return modifiers
+     * Sets the body
+     *
+     * @param body the body, can be null
+     * @return this, the MethodDeclaration
      */
     @Override
-    public EnumSet<Modifier> getModifiers() {
-        return modifiers;
-    }
-
-    @Override
-    public String getName() {
-        return name.getName();
-    }
-
-    public NameExpr getNameExpr() {
-        return name;
-    }
-
-    @Override
-    public List<Parameter> getParameters() {
-        parameters = ensureNotNull(parameters);
-        return parameters;
-    }
-
-    @Override
-    public List<ReferenceType> getThrows() {
-        throws_ = ensureNotNull(throws_);
-        return throws_;
+    public MethodDeclaration setBody(final BlockStmt body) {
+        notifyPropertyChange(ObservableProperty.BODY, this.body, body);
+        if (this.body != null)
+            this.body.setParentNode(null);
+        this.body = body;
+        setAsParentNodeOf(body);
+        return this;
     }
 
     @Override
@@ -178,102 +120,67 @@ public final class MethodDeclaration extends BodyDeclaration<MethodDeclaration>
         return type;
     }
 
-    public List<TypeParameter> getTypeParameters() {
-        typeParameters = ensureNotNull(typeParameters);
-        return typeParameters;
-    }
-
-    public void setArrayCount(final int arrayCount) {
-        this.arrayCount = arrayCount;
-    }
-
     @Override
-    public MethodDeclaration setBody(final BlockStmt body) {
-        this.body = body;
-        setAsParentNodeOf(this.body);
+    public MethodDeclaration setType(final Type type) {
+        assertNotNull(type);
+        notifyPropertyChange(ObservableProperty.TYPE, this.type, type);
+        if (this.type != null)
+            this.type.setParentNode(null);
+        this.type = type;
+        setAsParentNodeOf(type);
         return this;
     }
 
     @Override
     public MethodDeclaration setModifiers(final EnumSet<Modifier> modifiers) {
-        this.modifiers = modifiers;
-        return this;
+        return super.setModifiers(modifiers);
     }
 
     @Override
-    public MethodDeclaration setName(final String name) {
-        setNameExpr(new NameExpr(name));
-        return this;
-    }
-
-    public MethodDeclaration setNameExpr(final NameExpr name) {
-        this.name = name;
-        setAsParentNodeOf(this.name);
-        return this;
+    public MethodDeclaration setName(final SimpleName name) {
+        return super.setName(name);
     }
 
     @Override
-    public MethodDeclaration setParameters(final List<Parameter> parameters) {
-        this.parameters = parameters;
-        setAsParentNodeOf(this.parameters);
-        return this;
+    public MethodDeclaration setParameters(final NodeList<Parameter> parameters) {
+        return super.setParameters(parameters);
     }
 
     @Override
-    public MethodDeclaration setThrows(final List<ReferenceType> throws_) {
-        this.throws_ = throws_;
-        setAsParentNodeOf(this.throws_);
-        return this;
+    public MethodDeclaration setThrownExceptions(final NodeList<ReferenceType> thrownExceptions) {
+        return super.setThrownExceptions(thrownExceptions);
     }
 
     @Override
-    public MethodDeclaration setType(final Type type) {
-        this.type = type;
-        setAsParentNodeOf(this.type);
-        return this;
-    }
-
-    public MethodDeclaration setTypeParameters(final List<TypeParameter> typeParameters) {
-        this.typeParameters = typeParameters;
-        setAsParentNodeOf(typeParameters);
-        return this;
+    public MethodDeclaration setTypeParameters(final NodeList<TypeParameter> typeParameters) {
+        return super.setTypeParameters(typeParameters);
     }
 
     public boolean isDefault() {
         return isDefault;
     }
 
-    public MethodDeclaration setDefault(boolean isDefault) {
+    public MethodDeclaration setDefault(final boolean isDefault) {
+        notifyPropertyChange(ObservableProperty.DEFAULT, this.isDefault, isDefault);
         this.isDefault = isDefault;
         return this;
     }
 
-    @Override
-    public String getDeclarationAsString() {
-        return getDeclarationAsString(true, true, true);
-    }
-
-    @Override
-    public String getDeclarationAsString(boolean includingModifiers, boolean includingThrows) {
-        return getDeclarationAsString(includingModifiers, includingThrows, true);
-    }
-
     /**
      * The declaration returned has this schema:
-     *
+     * <p>
      * [accessSpecifier] [static] [abstract] [final] [native]
      * [synchronized] returnType methodName ([paramType [paramName]])
      * [throws exceptionsList]
-     * 
+     *
      * @return method declaration as String
      */
     @Override
-    public String getDeclarationAsString(boolean includingModifiers, boolean includingThrows,
-                                         boolean includingParameterName) {
+    public String getDeclarationAsString(boolean includingModifiers, boolean includingThrows, boolean includingParameterName) {
         StringBuilder sb = new StringBuilder();
         if (includingModifiers) {
             AccessSpecifier accessSpecifier = Modifier.getAccessSpecifier(getModifiers());
-            sb.append(accessSpecifier.getCodeRepresenation());
+            sb.append(accessSpecifier.asString());
             sb.append(accessSpecifier == AccessSpecifier.DEFAULT ? "" : " ");
             if (getModifiers().contains(Modifier.STATIC)) {
                 sb.append("static ");
@@ -292,7 +199,7 @@ public final class MethodDeclaration extends BodyDeclaration<MethodDeclaration>
             }
         }
         // TODO verify it does not print comments connected to the type
-        sb.append(getType().toStringWithoutComments());
+        sb.append(getType().toString(prettyPrinterNoCommentsConfiguration));
         sb.append(" ");
         sb.append(getName());
         sb.append("(");
@@ -304,35 +211,49 @@ public final class MethodDeclaration extends BodyDeclaration<MethodDeclaration>
                 sb.append(", ");
             }
             if (includingParameterName) {
-                sb.append(param.toStringWithoutComments());
+                sb.append(param.toString(prettyPrinterNoCommentsConfiguration));
             } else {
-                sb.append(param.getType().toStringWithoutComments());
+                sb.append(param.getType().toString(prettyPrinterNoCommentsConfiguration));
                 if (param.isVarArgs()) {
                     sb.append("...");
                 }
             }
         }
         sb.append(")");
-        if (includingThrows) {
-            boolean firstThrow = true;
-            for (ReferenceType thr : getThrows()) {
-                if (firstThrow) {
-                    firstThrow = false;
-                    sb.append(" throws ");
-                } else {
-                    sb.append(", ");
-                }
-                sb.append(thr.toStringWithoutComments());
-            }
-        }
+        sb.append(appendThrowsIfRequested(includingThrows));
         return sb.toString();
     }
 
     @Override
-    public JavadocComment getJavaDoc() {
-        if (getComment() instanceof JavadocComment) {
-            return (JavadocComment) getComment();
+    public List<NodeList<?>> getNodeLists() {
+        return Arrays.asList(getParameters(), getThrownExceptions(), getTypeParameters(), getAnnotations());
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        if (body != null) {
+            if (node == body) {
+                removeBody();
+                return true;
+            }
         }
-        return null;
+        return super.remove(node);
+    }
+
+    public MethodDeclaration removeBody() {
+        return setBody((BlockStmt) null);
+    }
+
+    @Override
+    public MethodDeclaration clone() {
+        return (MethodDeclaration) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public MethodDeclarationMetaModel getMetaModel() {
+        return JavaParserMetaModel.methodDeclarationMetaModel;
     }
 }
+

@@ -18,82 +18,53 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast;
 
 import com.github.javaparser.Range;
-import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.Name;
+import com.github.javaparser.ast.nodeTypes.NodeWithName;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.ImportDeclarationMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
 
 /**
- * <p>
- * This class represents a import declaration or an empty import declaration. Imports are optional for the
- * {@link CompilationUnit}.
- * </p>
- * The ImportDeclaration is constructed following the syntax:<br>
- * <pre>
- * {@code
- * ImportDeclaration ::= "import" ( "static" )? }{@link NameExpr}{@code ( "." "*" )? ";"
- * }
- * </pre>
- * An enmpty import declaration is simply a semicolon among the import declarations.
+ * An import declaration.
+ * <br/><code>import com.github.javaparser.JavaParser;</code>
+ * <br/><code>import com.github.javaparser.*;</code>
+ * <br/><code>import com.github.javaparser.JavaParser.*; </code>
+ * <br/><code>import static com.github.javaparser.JavaParser.*;</code> 
+ * <br/><code>import static com.github.javaparser.JavaParser.parse;</code> 
+ * 
+ * <p>The name does not include the asterisk or the static keyword.</p>
  * @author Julio Vilmar Gesser
  */
-public final class ImportDeclaration extends Node {
+public final class ImportDeclaration extends Node implements NodeWithName<ImportDeclaration> {
 
-    private NameExpr name;
-    private boolean static_;
-    private boolean asterisk;
-    private boolean isEmptyImportDeclaration;
+    private Name name;
+
+    private boolean isStatic;
+
+    private boolean isAsterisk;
 
     private ImportDeclaration() {
-        this.isEmptyImportDeclaration = true;
-        static_ = false;
-        asterisk = false;
+        this(null, new Name(), false, false);
     }
 
-    private ImportDeclaration(Range range) {
-        super(range);
-        this.isEmptyImportDeclaration = true;
-        static_ = false;
-        asterisk = false;
+    @AllFieldsConstructor
+    public ImportDeclaration(Name name, boolean isStatic, boolean isAsterisk) {
+        this(null, name, isStatic, isAsterisk);
     }
 
-    /**
-     * Create an empty import declaration without specifying its position.
-     */
-    public static ImportDeclaration createEmptyDeclaration(){
-        return new ImportDeclaration();
-    }
-
-    /**
-     * Create an empty import declaration specifying its position.
-     */
-    public static ImportDeclaration createEmptyDeclaration(Range range){
-        return new ImportDeclaration(range);
-    }
-
-    public ImportDeclaration(NameExpr name, boolean isStatic, boolean isAsterisk) {
-        setAsterisk(isAsterisk);
-        setName(name);
-        setStatic(isStatic);
-        this.isEmptyImportDeclaration = false;
-    }
-
-    public ImportDeclaration(Range range, NameExpr name, boolean isStatic, boolean isAsterisk) {
+    public ImportDeclaration(Range range, Name name, boolean isStatic, boolean isAsterisk) {
         super(range);
         setAsterisk(isAsterisk);
         setName(name);
         setStatic(isStatic);
-        this.isEmptyImportDeclaration = false;
-    }
-
-    /**
-     * Is this an empty import declaration or a normal import declaration?
-     */
-    public boolean isEmptyImportDeclaration(){
-        return this.isEmptyImportDeclaration;
     }
 
     @Override
@@ -107,79 +78,60 @@ public final class ImportDeclaration extends Node {
     }
 
     /**
-     * Retrieves the name of the import.
-     * 
-     * @return the name of the import
-     * @throws UnsupportedOperationException when invoked on an empty import declaration
+     * Retrieves the name of the import (.* is not included.)
      */
-    public NameExpr getName() {
-        if (isEmptyImportDeclaration) {
-            throw new UnsupportedOperationException("Empty import declarations have no name");
-        }
+    public Name getName() {
         return name;
     }
 
     /**
      * Return if the import ends with "*".
-     * 
-     * @return <code>true</code> if the import ends with "*", <code>false</code>
-     *         otherwise
      */
     public boolean isAsterisk() {
-        return asterisk;
+        return isAsterisk;
     }
 
-    /**
-     * Return if the import is static.
-     * 
-     * @return <code>true</code> if the import is static, <code>false</code>
-     *         otherwise
-     */
     public boolean isStatic() {
-        return static_;
+        return isStatic;
     }
 
-    /**
-     * Sets if this import is asterisk.
-     * 
-     * @param asterisk
-     *            <code>true</code> if this import is asterisk
-     * @throws UnsupportedOperationException when setting true on an empty import declaration
-     */
-    public void setAsterisk(boolean asterisk) {
-        if (isEmptyImportDeclaration && asterisk) {
-            throw new UnsupportedOperationException("Empty import cannot have asterisk");
-        }
-        this.asterisk = asterisk;
+    public ImportDeclaration setAsterisk(final boolean isAsterisk) {
+        notifyPropertyChange(ObservableProperty.ASTERISK, this.isAsterisk, isAsterisk);
+        this.isAsterisk = isAsterisk;
+        return this;
     }
 
-    /**
-     * Sets the name this import.
-     * 
-     * @param name
-     *            the name to set
-     * @throws UnsupportedOperationException when invoked on an empty import declaration
-     */
-    public void setName(NameExpr name) {
-        if (isEmptyImportDeclaration) {
-            throw new UnsupportedOperationException("Empty import cannot have name");
-        }
+    public ImportDeclaration setName(final Name name) {
+        assertNotNull(name);
+        notifyPropertyChange(ObservableProperty.NAME, this.name, name);
+        if (this.name != null)
+            this.name.setParentNode(null);
         this.name = name;
-        setAsParentNodeOf(this.name);
+        setAsParentNodeOf(name);
+        return this;
     }
 
-    /**
-     * Sets if this import is static.
-     * 
-     * @param static_
-     *            <code>true</code> if this import is static
-     * @throws UnsupportedOperationException when setting true on an empty import declaration
-     */
-    public void setStatic(boolean static_) {
-        if (isEmptyImportDeclaration && static_) {
-            throw new UnsupportedOperationException("Empty import cannot be static");
-        }
-        this.static_ = static_;
+    public ImportDeclaration setStatic(final boolean isStatic) {
+        notifyPropertyChange(ObservableProperty.STATIC, this.isStatic, isStatic);
+        this.isStatic = isStatic;
+        return this;
     }
 
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public ImportDeclaration clone() {
+        return (ImportDeclaration) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public ImportDeclarationMetaModel getMetaModel() {
+        return JavaParserMetaModel.importDeclarationMetaModel;
+    }
 }
+

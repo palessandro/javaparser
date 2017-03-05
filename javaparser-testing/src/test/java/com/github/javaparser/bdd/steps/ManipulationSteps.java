@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,48 +18,40 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
+
 package com.github.javaparser.bdd.steps;
 
-import static com.github.javaparser.ast.type.PrimitiveType.*;
-import static com.github.javaparser.bdd.steps.SharedSteps.getMethodByPositionAndClassPosition;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThat;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-
-import com.github.javaparser.ParseProblemException;
-import com.github.javaparser.ast.type.ReferenceType;
-import org.jbehave.core.annotations.Alias;
-import org.jbehave.core.annotations.Given;
-import org.jbehave.core.annotations.Then;
-import org.jbehave.core.annotations.When;
-
 import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Modifier;
-import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.expr.FieldAccessExpr;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.NameExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
-import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.TryStmt;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.VoidType;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import org.jbehave.core.annotations.Alias;
+import org.jbehave.core.annotations.Given;
+import org.jbehave.core.annotations.Then;
+import org.jbehave.core.annotations.When;
+
+import java.util.EnumSet;
+import java.util.Map;
+
+import static com.github.javaparser.JavaParser.parseName;
+import static com.github.javaparser.ast.NodeList.nodeList;
+import static com.github.javaparser.ast.type.PrimitiveType.*;
+import static com.github.javaparser.bdd.steps.SharedSteps.getMethodByPositionAndClassPosition;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
 
 public class ManipulationSteps {
 
@@ -67,14 +59,14 @@ public class ManipulationSteps {
     private BlockStmt blockStmt;
     private Statement statement;
     private TryStmt tryStmt;
-    private List<VariableDeclarationExpr> variableDeclarationExprList;
+    private NodeList<VariableDeclarationExpr> variableDeclarationExprList;
     private ChangeMethodNameToUpperCaseVisitor changeMethodNameToUpperCaseVisitor;
     private AddNewIntParameterCalledValueVisitor addNewIntParameterCalledValueVisitor;
 
     /* Map that maintains shares state across step classes.  If manipulating the objects in the map you must update the state */
     private Map<String, Object> state;
 
-    public ManipulationSteps(Map<String, Object> state){
+    public ManipulationSteps(Map<String, Object> state) {
         this.state = state;
     }
 
@@ -95,7 +87,7 @@ public class ManipulationSteps {
 
     @Given("a List of VariableDeclarations")
     public void givenAListOfVariableDeclarations() {
-        variableDeclarationExprList = new ArrayList<>();
+        variableDeclarationExprList = new NodeList<>();
         variableDeclarationExprList.add(new VariableDeclarationExpr());
         variableDeclarationExprList.add(new VariableDeclarationExpr());
     }
@@ -117,7 +109,7 @@ public class ManipulationSteps {
 
     @When("is the String \"$value\" is parsed by the JavaParser using parseStatement")
     public void whenIsTheStringIsParsedByTheJavaParserUsingParseStatement(String value) {
-        statement= JavaParser.parseStatement(value);
+        statement = JavaParser.parseStatement(value);
     }
 
     @When("the List of VariableDeclarations are set as the resources on TryStmt")
@@ -125,34 +117,34 @@ public class ManipulationSteps {
         tryStmt.setResources(variableDeclarationExprList);
     }
 
-    @When("null is set as the resources on TryStmt")
+    @When("empty list is set as the resources on TryStmt")
     public void whenNullIsSetAsTheResourcesOnTryStmt() {
-        tryStmt.setResources(null);
+        tryStmt.setResources(new NodeList<>());
     }
 
     @When("the package declaration is set to \"$packageName\"")
     public void whenThePackageDeclarationIsSetTo(String packageName) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
-        compilationUnit.setPackage(new PackageDeclaration(new NameExpr(packageName)));
+        compilationUnit.setPackageDeclaration(new PackageDeclaration(parseName(packageName)));
         state.put("cu1", compilationUnit);
     }
 
     @When("a public class called \"$className\" is added to the CompilationUnit")
     public void whenAClassCalledIsAddedToTheCompilationUnit(String className) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
-		TypeDeclaration<?> type = new ClassOrInterfaceDeclaration(EnumSet.of(Modifier.PUBLIC), false, "CreateClass");
-        compilationUnit.setTypes(Arrays.asList(type));
+        TypeDeclaration<?> type = new ClassOrInterfaceDeclaration(EnumSet.of(Modifier.PUBLIC), false, "CreateClass");
+        compilationUnit.setTypes(nodeList(type));
         state.put("cu1", compilationUnit);
     }
 
     @When("a public static method called \"$methodName\" returning void is added to class $position in the compilation unit")
     public void whenAStaticMethodCalledReturningIsAddedToClassInTheCompilationUnit(String methodName, int position) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
-		 TypeDeclaration<?> type = compilationUnit.getTypes().get(position -1);
-		EnumSet<Modifier> modifiers = EnumSet.of(Modifier.PUBLIC);
-		MethodDeclaration method = new MethodDeclaration(modifiers, new VoidType(), methodName);
-		modifiers.add(Modifier.STATIC);
-		method.setModifiers(modifiers);
+        TypeDeclaration<?> type = compilationUnit.getType(position - 1);
+        EnumSet<Modifier> modifiers = EnumSet.of(Modifier.PUBLIC);
+        MethodDeclaration method = new MethodDeclaration(modifiers, new VoidType(), methodName);
+        modifiers.add(Modifier.STATIC);
+        method.setModifiers(modifiers);
         type.addMember(method);
         state.put("cu1", compilationUnit);
     }
@@ -161,7 +153,7 @@ public class ManipulationSteps {
     public void whenVarargsCalledAreAddedToMethodInClass(String typeName, String parameterName, int methodPosition, int classPosition) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
         MethodDeclaration method = getMethodByPositionAndClassPosition(compilationUnit, methodPosition, classPosition);
-        Parameter param = Parameter.create(ReferenceType.create(typeName, 0), parameterName);
+        Parameter param = new Parameter(new ClassOrInterfaceType(typeName), parameterName);
         param.setVarArgs(true);
         method.addParameter(param);
     }
@@ -182,21 +174,21 @@ public class ManipulationSteps {
         FieldAccessExpr field = new FieldAccessExpr(clazz, fieldName);
         MethodCallExpr call = new MethodCallExpr(field, methodName);
         call.addArgument(new StringLiteralExpr(stringValue));
-        method.getBody().addStatement(call);
+        method.getBody().get().addStatement(call);
     }
 
     @When("method $methodPosition in class $classPosition has it's name converted to uppercase")
     public void whenMethodInClassHasItsNameConvertedToUppercase(int methodPosition, int classPosition) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
         MethodDeclaration method = getMethodByPositionAndClassPosition(compilationUnit, methodPosition, classPosition);
-        method.setName(method.getName().toUpperCase());
+        method.setName(method.getNameAsString().toUpperCase());
     }
 
     @When("method $methodPosition in class $classPosition has an int parameter called \"$paramName\" added")
     public void whenMethodInClassHasAnIntArgumentCalledAdded(int methodPosition, int classPosition, String paramName) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
         MethodDeclaration method = getMethodByPositionAndClassPosition(compilationUnit, methodPosition, classPosition);
-        method.addParameter(INT_TYPE, paramName);
+        method.addParameter(intType(), paramName);
     }
 
     @When("the compilation unit is cloned")
@@ -233,7 +225,7 @@ public class ManipulationSteps {
 
     @Then("Statement $position in BlockStmt toString is \"$expectedContent\"")
     public void thenTheBlockStmtContentIs(int position, String expectedContent) {
-        Statement statementUnderTest = blockStmt.getStmts().get(position-1);
+        Statement statementUnderTest = blockStmt.getStatement(position - 1);
         assertThat(statementUnderTest.toString(), is(expectedContent));
     }
 
@@ -244,21 +236,21 @@ public class ManipulationSteps {
 
     @Then("all the VariableDeclarations parent is the TryStmt")
     public void thenAllTheVariableDeclarationsParentIsTheTryStmt() {
-        for(VariableDeclarationExpr expr : variableDeclarationExprList){
-            assertThat(expr.getParentNode(), is((Node)tryStmt));
+        for (VariableDeclarationExpr expr : variableDeclarationExprList) {
+            assertThat(expr.getParentNode().get(), is(tryStmt));
         }
     }
 
     @Then("the TryStmt has no child nodes")
     public void thenTheTryStmtHasNotChildNodes() {
-        assertThat(tryStmt.getChildrenNodes().size(), is(0));
+        assertThat(tryStmt.getChildNodes().size(), is(0));
     }
 
     @Then("method $methodPosition in class $classPosition has the name \"$expectedName\"")
     public void thenMethodInClassHasTheName(int methodPosition, int classPosition, String expectedName) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
         MethodDeclaration method = getMethodByPositionAndClassPosition(compilationUnit, methodPosition, classPosition);
-        assertThat(method.getName(), is(expectedName));
+        assertThat(method.getNameAsString(), is(expectedName));
     }
 
     @Then("method $methodPosition in class $classPosition has $expectedCount parameters")
@@ -274,22 +266,22 @@ public class ManipulationSteps {
     public void thenMethodInClassParameterIsTypeIntCalled(int methodPosition, int classPosition, int parameterPosition, String expectedName) {
         CompilationUnit compilationUnit = (CompilationUnit) state.get("cu1");
         MethodDeclaration method = getMethodByPositionAndClassPosition(compilationUnit, methodPosition, classPosition);
-        Parameter parameter = method.getParameters().get(parameterPosition -1);
-        assertThat(parameter.getType(), is(INT_TYPE));
-        assertThat(parameter.getId().getName(), is(expectedName));
+        Parameter parameter = method.getParameter(parameterPosition - 1);
+        assertThat(parameter.getType(), is(intType()));
+        assertThat(parameter.getNameAsString(), is(expectedName));
     }
 
     private static class ChangeMethodNameToUpperCaseVisitor extends VoidVisitorAdapter<Void> {
         @Override
         public void visit(MethodDeclaration n, Void arg) {
-            n.setName(n.getName().toUpperCase());
+            n.setName(n.getNameAsString().toUpperCase());
         }
     }
 
     private static class AddNewIntParameterCalledValueVisitor extends VoidVisitorAdapter<Void> {
         @Override
         public void visit(MethodDeclaration n, Void arg) {
-            n.addParameter(INT_TYPE, "value");
+            n.addParameter(intType(), "value");
         }
     }
 }

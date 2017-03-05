@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,11 +18,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
+
 package com.github.javaparser.bdd.steps;
 
+import com.github.javaparser.HasParentNode;
 import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.comments.BlockComment;
+import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.comments.LineComment;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.*;
@@ -42,8 +46,8 @@ class ExistenceOfParentNodeVerifier {
     }
 
     private static class Verifier extends VoidVisitorAdapter<Void> {
-        private static void assertParentIsSet(Node n) {
-            assertThat(n + " has no parent set!", n.getParentNode(), is(notNullValue()));
+        private static void assertParentIsSet(HasParentNode<?> n) {
+            assertThat(n + " has no parent set!", n.getParentNode().orElse(null), is(notNullValue()));
         }
 
         @Override
@@ -91,6 +95,11 @@ class ExistenceOfParentNodeVerifier {
         @Override
         public void visit(BinaryExpr n, Void arg) {
             assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(BlockComment n, Void arg) {
             super.visit(n, arg);
         }
 
@@ -149,6 +158,11 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
+        public void visit(CompilationUnit n, Void arg) {
+            super.visit(n, arg);
+        }
+
+        @Override
         public void visit(ConditionalExpr n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
@@ -186,12 +200,6 @@ class ExistenceOfParentNodeVerifier {
 
         @Override
         public void visit(EmptyStmt n, Void arg) {
-            assertParentIsSet(n);
-            super.visit(n, arg);
-        }
-
-        @Override
-        public void visit(EmptyTypeDeclaration n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
@@ -257,12 +265,6 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
-        public void visit(ImportDeclaration n, Void arg) {
-            assertParentIsSet(n);
-            super.visit(n, arg);
-        }
-
-        @Override
         public void visit(InitializerDeclaration n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
@@ -281,14 +283,18 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
-        public void visit(IntegerLiteralMinValueExpr n, Void arg) {
-            assertParentIsSet(n);
+        public void visit(JavadocComment n, Void arg) {
             super.visit(n, arg);
         }
 
         @Override
         public void visit(LabeledStmt n, Void arg) {
             assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(LineComment n, Void arg) {
             super.visit(n, arg);
         }
 
@@ -300,12 +306,6 @@ class ExistenceOfParentNodeVerifier {
 
         @Override
         public void visit(LongLiteralExpr n, Void arg) {
-            assertParentIsSet(n);
-            super.visit(n, arg);
-        }
-
-        @Override
-        public void visit(LongLiteralMinValueExpr n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
@@ -383,13 +383,37 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
-        public void visit(QualifiedNameExpr n, Void arg) {
+        public void visit(Name n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
 
         @Override
-        public void visit(ReferenceType n, Void arg) {
+        public void visit(SimpleName n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(ArrayType n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(ArrayCreationLevel n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(IntersectionType n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(UnionType n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
@@ -455,13 +479,19 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
-        public void visit(TypeDeclarationStmt n, Void arg) {
+        public void visit(LocalClassDeclarationStmt n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
 
         @Override
         public void visit(TypeExpr n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
+        public void visit(NodeList n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }
@@ -479,6 +509,12 @@ class ExistenceOfParentNodeVerifier {
         }
 
         @Override
+        public void visit(UnknownType n, Void arg) {
+            assertParentIsSet(n);
+            super.visit(n, arg);
+        }
+
+        @Override
         public void visit(VariableDeclarationExpr n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
@@ -486,12 +522,6 @@ class ExistenceOfParentNodeVerifier {
 
         @Override
         public void visit(VariableDeclarator n, Void arg) {
-            assertParentIsSet(n);
-            super.visit(n, arg);
-        }
-
-        @Override
-        public void visit(VariableDeclaratorId n, Void arg) {
             assertParentIsSet(n);
             super.visit(n, arg);
         }

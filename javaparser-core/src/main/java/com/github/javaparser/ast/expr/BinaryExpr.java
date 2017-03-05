@@ -3,12 +3,12 @@
  * Copyright (C) 2011, 2013-2016 The JavaParser Team.
  *
  * This file is part of JavaParser.
- * 
+ *
  * JavaParser can be used either under the terms of
  * a) the GNU Lesser General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
- * b) the terms of the Apache License 
+ * b) the terms of the Apache License
  *
  * You should have received a copy of both licenses in LICENCE.LGPL and
  * LICENCE.APACHE. Please refer to those files for details.
@@ -18,60 +18,65 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  */
- 
 package com.github.javaparser.ast.expr;
 
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.AllFieldsConstructor;
+import com.github.javaparser.ast.observer.ObservableProperty;
 import com.github.javaparser.ast.visitor.GenericVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.CloneVisitor;
+import com.github.javaparser.metamodel.BinaryExprMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
+import com.github.javaparser.printer.Printable;
 
 /**
+ * An expression with an expression on the left, an expression on the right, and an operator in the middle.
+ * It supports the operators that are found the the BinaryExpr.Operator enum.
+ * <br/><code>a && b</code>
+ * <br/><code>155 * 33</code>
+ *
  * @author Julio Vilmar Gesser
  */
 public final class BinaryExpr extends Expression {
 
-    public enum Operator {
-        or, // ||
-        and, // &&
-        binOr, // |
-        binAnd, // &
-        xor, // ^
-        equals, // ==
-        notEquals, // !=
-        less, // <
-        greater, // >
-        lessEquals, // <=
-        greaterEquals, // >=
-        lShift, // <<
-        rSignedShift, // >>
-        rUnsignedShift, // >>>
-        plus, // +
-        minus, // -
-        times, // *
-        divide, // /
-        remainder, // %
+    public enum Operator implements Printable {
+
+        OR("||"), AND("&&"), BINARY_OR("|"), BINARY_AND("&"), XOR("^"), EQUALS("=="), NOT_EQUALS("!="), LESS("<"), GREATER(">"), LESS_EQUALS("<="), GREATER_EQUALS(">="), LEFT_SHIFT("<<"), SIGNED_RIGHT_SHIFT(">>"), UNSIGNED_RIGHT_SHIFT(">>>"), PLUS("+"), MINUS("-"), MULTIPLY("*"), DIVIDE("/"), REMAINDER("%");
+
+        private final String codeRepresentation;
+
+        Operator(String codeRepresentation) {
+            this.codeRepresentation = codeRepresentation;
+        }
+
+        public String asString() {
+            return codeRepresentation;
+        }
     }
 
     private Expression left;
 
     private Expression right;
 
-    private Operator op;
+    private Operator operator;
 
     public BinaryExpr() {
+        this(null, new BooleanLiteralExpr(), new BooleanLiteralExpr(), Operator.EQUALS);
     }
 
-    public BinaryExpr(Expression left, Expression right, Operator op) {
-    	setLeft(left);
-    	setRight(right);
-    	setOperator(op);
+    @AllFieldsConstructor
+    public BinaryExpr(Expression left, Expression right, Operator operator) {
+        this(null, left, right, operator);
     }
 
-    public BinaryExpr(Range range, Expression left, Expression right, Operator op) {
+    public BinaryExpr(Range range, Expression left, Expression right, Operator operator) {
         super(range);
-    	setLeft(left);
-    	setRight(right);
-    	setOperator(op);
+        setLeft(left);
+        setRight(right);
+        setOperator(operator);
     }
 
     @Override
@@ -89,24 +94,55 @@ public final class BinaryExpr extends Expression {
     }
 
     public Operator getOperator() {
-        return op;
+        return operator;
     }
 
     public Expression getRight() {
         return right;
     }
 
-    public void setLeft(Expression left) {
+    public BinaryExpr setLeft(final Expression left) {
+        assertNotNull(left);
+        notifyPropertyChange(ObservableProperty.LEFT, this.left, left);
+        if (this.left != null)
+            this.left.setParentNode(null);
         this.left = left;
-		setAsParentNodeOf(this.left);
+        setAsParentNodeOf(left);
+        return this;
     }
 
-    public void setOperator(Operator op) {
-        this.op = op;
+    public BinaryExpr setOperator(final Operator operator) {
+        assertNotNull(operator);
+        notifyPropertyChange(ObservableProperty.OPERATOR, this.operator, operator);
+        this.operator = operator;
+        return this;
     }
 
-    public void setRight(Expression right) {
+    public BinaryExpr setRight(final Expression right) {
+        assertNotNull(right);
+        notifyPropertyChange(ObservableProperty.RIGHT, this.right, right);
+        if (this.right != null)
+            this.right.setParentNode(null);
         this.right = right;
-		setAsParentNodeOf(this.right);
+        setAsParentNodeOf(right);
+        return this;
+    }
+
+    @Override
+    public boolean remove(Node node) {
+        if (node == null)
+            return false;
+        return super.remove(node);
+    }
+
+    @Override
+    public BinaryExpr clone() {
+        return (BinaryExpr) accept(new CloneVisitor(), null);
+    }
+
+    @Override
+    public BinaryExprMetaModel getMetaModel() {
+        return JavaParserMetaModel.binaryExprMetaModel;
     }
 }
+
